@@ -3,15 +3,6 @@
 
 GridWorld gw(5, 5);
 
-struct Policy {
-	typedef GridWorld::State State;
-	typedef GridWorld::Action Action;
-	double operator () (State &s, Action &a) {
-		auto actions = gw.actions(s);
-		return 1.0 / (actions.size());
-	}
-};
-
 int main() {
 	gw.setReward(0, 0, 10.0);
 	gw.setReward(4, 4, 10.0);
@@ -19,7 +10,8 @@ int main() {
 	gw.setReward(4, 0, 7.0);
 	GridWorld::Map mp;
 	gw.loadMap(mp);
-	Policy p;
+	GridWorld::Policy p;
+	gw.loadPolicy(p);
 	dp(gw, p, mp, 0.9, 2000);
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {
@@ -27,6 +19,7 @@ int main() {
 		}
 		std::cout << std::endl;
 	}
+	vgreedy(gw, p, mp, 0.9);
 
 	return 0;
 }

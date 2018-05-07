@@ -100,4 +100,28 @@ public:
 			ans.push_back(RIGHT);
 		return ans;
 	}
+
+	struct Policy {
+		int n;
+		std::vector<double> storage;
+		double & operator () (State &s, Action &a) {
+			return storage[(s.first * n + s.second) * 4 + a];
+		}
+	};
+	void loadPolicy(Policy &p) {
+		// 初始化为随机policy
+		p.storage.resize(m * n * 4);
+		p.n = n;
+		for (int i = 0; i < m; i++)
+			for (int j = 0; j < n; j++) {
+				State s = std::make_pair(i, j);
+				auto ac = actions(s);
+				int t = ac.size();
+				if (t > 0) {
+					for each (Action a in ac) {
+						p(s, a) = 1.0 / t;
+					}
+				}
+			}
+	}
 };
