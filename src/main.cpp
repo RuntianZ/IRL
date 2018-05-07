@@ -17,9 +17,10 @@ int main() {
 	gw.setReward(4, 4, 10.0);
 	gw.setReward(0, 4, 7.0);
 	gw.setReward(4, 0, 7.0);
-	std::map<typename GridWorld::State, double> mp;
+	GridWorld::Map mp;
+	gw.loadMap(mp);
 	Policy p;
-	dp(gw, p, mp, 500);
+	dp(gw, p, mp, 0.9, 2000);
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {
 			std::cout << mp[std::make_pair(i, j)] << "  ";

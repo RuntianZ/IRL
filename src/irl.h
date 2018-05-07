@@ -29,15 +29,16 @@
 #include <vector>
 #include <iostream>
 
+// dp - Dynamic Programming algorithm
 template <class E, class P, class M>
-void dp(E env, P policy, M &value_func, int trials = 1000) {
+void dp(E env, P policy, M &value_func, double gamma = 0.9, int trials = 1000) {
 	typedef typename E::State State;
 	typedef typename E::Action Action;
 	using std::vector;
 	vector<State> states = env.states();
 	int n = states.size();
 	for (int i = 0; i < n; i++)
-		value_func[states[i]] = 0.0;
+		value_func[states[i]] = env.vreward(states[i]);
 	
 	for (int t = 0; t < trials; t++) {
 		// std::cout << "check" << std::endl;
@@ -54,7 +55,7 @@ void dp(E env, P policy, M &value_func, int trials = 1000) {
 				for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
 					j += (it2->second) * value_func[it2->first];
 				}
-				j += env.qreward(s, *ite);
+				j = j * gamma + env.qreward(s, *ite);
 				ans += pr * j;
 			}
 			value_func[s] = ans;

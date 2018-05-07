@@ -26,6 +26,18 @@ public:
 		UP, DOWN, LEFT, RIGHT
 	};
 	typedef std::pair<int, int> State;
+	struct Map {
+		std::vector<double> storage;
+		int n;
+		double & operator [] (State &s) {
+			return storage[s.first * n + s.second];
+		}
+	};
+	void loadMap(Map &mp) {
+		mp.storage.resize(m * n);
+		mp.n = n;
+	}
+
 	std::vector<State> states() {
 		std::vector<State> ans;
 		ans.reserve(m * n);
@@ -64,16 +76,16 @@ public:
 		}
 		return ans;
 	}
-	double vreward(State s) {
+	double vreward(State &s) {
 		return reward[s.first * n + s.second];
 	}
-	double qreward(State s, Action a) {
+	double qreward(State &s, Action &a) {
 		return -1.0;
 	}
-	bool terminate(State s) {
+	bool terminate(State &s) {
 		return (vreward(s) > 0);
 	}
-	std::vector<Action> actions(State s) {
+	std::vector<Action> actions(State &s) {
 		int x = s.first, y = s.second;
 		std::vector<Action> ans;
 		if (terminate(s))
