@@ -11,10 +11,11 @@ int main() {
 	GridWorld::Map mp, mp2;
 	gw.loadMap(mp);
 	gw.loadMap(mp2);
-	// GridWorld::Policy p;
-	// gw.loadPolicy(p);
-	// policy_iteration(gw, p, mp);
+	GridWorld::Policy p;
+	gw.loadPolicy(p);
+	// policy_iteration(gw, p, mp, mp2);
 	value_iteration(gw, mp, mp2);
+	vgreedy(gw, p, mp);
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {
 			std::cout << mp[std::make_pair(i, j)] << "  ";

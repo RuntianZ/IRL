@@ -34,15 +34,20 @@
 const double oo = 1e10;
 
 // dp - Dynamic Programming algorithm
-template <class E, class P, class M>
-void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000) {
+// Will modify both value_func and value_func2
+// Final result will be stored in value_func
+// value_func2 is an auxillary storage
+template <class E, class P, class M1, class M2>
+void dp(E& env, P& policy, M1& value_func, M2& value_func2, 
+	double gamma = 0.9, int trials = 1000) {
 	typedef typename E::State State;
 	typedef typename E::Action Action;
 	auto states = env.states();
 	for each (State s in states)
-		value_func[s] = env.vreward(s);
+		value_func[s] = value_func2[s] = env.vreward(s);
 
 	for (int t = 0; t < trials; t++) {
+		int i0 = (trials + t) & 1;
 		// std::cout << "check" << std::endl;
 		for each (State s in states) {
 			if (env.terminate(s))
@@ -55,12 +60,15 @@ void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000)
 				double j = 0;
 				auto allStates = env.goAll(s, a);
 				for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
-					j += (it2->second) * value_func[it2->first];
+					j += (it2->second) * (i0 ? value_func2[it2->first] : value_func[it2->first]);
 				}
 				j = j * gamma + env.qreward(s, a);
 				ans += pr * j;
 			}
-			value_func[s] = ans;
+			if (i0)
+				value_func[s] = ans;
+			else
+				value_func2[s] = ans;
 		}
 	}
 }
@@ -103,19 +111,16 @@ void vgreedy(E& env, P& policy, M& value_func, double gamma = 0.9) {
 
 // policy_iteration
 // Will modify policy and value_func
-template <class E, class P, class M>
-void policy_iteration(E& env, P& policy, M& value_func, double gamma = 0.9, 
+template <class E, class P, class M1, class M2>
+void policy_iteration(E& env, P& policy, M1& value_func, M2& value_func2, double gamma = 0.9, 
 	int trials = 200, int iterations = 30) {
 	for (int i = 0; i < iterations; i++) {
-		dp(env, policy, value_func, gamma, trials);
+		dp(env, policy, value_func, value_func2, gamma, trials);
 		vgreedy(env, policy, value_func, gamma);
 	}
 }
 
 // value_iteration
-// Will modify both value_func and value_func2
-// Final result will be stored in value_func
-// value_func2 is an auxillary storage
 template <class E, class M1, class M2>
 void value_iteration(E& env, M1& value_func, M2& value_func2, double gamma = 0.9, int iterations = 1000) {
 	typedef typename E::State State;
