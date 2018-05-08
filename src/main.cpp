@@ -8,13 +8,12 @@ int main() {
 	gw.setReward(4, 4, 10.0);
 	gw.setReward(0, 4, 7.0);
 	gw.setReward(4, 0, 7.0);
-	GridWorld::Map mp, mp2;
+	GridWorld::Map mp;
 	gw.loadMap(mp);
-	gw.loadMap(mp2);
 	GridWorld::Policy p;
 	gw.loadPolicy(p);
 	// policy_iteration(gw, p, mp, mp2);
-	value_iteration(gw, mp, mp2);
+	value_iteration(gw, mp);
 	vgreedy(gw, p, mp);
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {

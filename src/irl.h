@@ -73,6 +73,38 @@ void dp(E& env, P& policy, M1& value_func, M2& value_func2,
 	}
 }
 
+// dp - In-place dynamic Programming algorithm
+template <class E, class P, class M>
+void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000) {
+	typedef typename E::State State;
+	typedef typename E::Action Action;
+	auto states = env.states();
+	for each (State s in states)
+		value_func[s] = env.vreward(s);
+
+	for (int t = 0; t < trials; t++) {
+		// std::cout << "check" << std::endl;
+		for each (State s in states) {
+			if (env.terminate(s))
+				continue;
+			double ans = env.vreward(s);
+			auto actions = env.actions(s);
+			assert(actions.size() > 0);
+			for each (Action a in actions) {
+				double pr = policy(s, a);
+				double j = 0;
+				auto allStates = env.goAll(s, a);
+				for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
+					j += (it2->second) * value_func[it2->first];
+				}
+				j = j * gamma + env.qreward(s, a);
+				ans += pr * j;
+			}
+			value_func[s] = ans;
+		}
+	}
+}
+
 // vgreedy - Fill a policy greedily using value function
 // Will modify policy
 template <class E, class P, class M>
@@ -120,6 +152,16 @@ void policy_iteration(E& env, P& policy, M1& value_func, M2& value_func2, double
 	}
 }
 
+// policy_iteration - In-place policy iteration
+template <class E, class P, class M>
+void policy_iteration(E& env, P& policy, M& value_func, double gamma = 0.9,
+	int trials = 200, int iterations = 30) {
+	for (int i = 0; i < iterations; i++) {
+		dp(env, policy, value_func, gamma, trials);
+		vgreedy(env, policy, value_func, gamma);
+	}
+}
+
 // value_iteration
 template <class E, class M1, class M2>
 void value_iteration(E& env, M1& value_func, M2& value_func2, double gamma = 0.9, int iterations = 1000) {
@@ -151,6 +193,37 @@ void value_iteration(E& env, M1& value_func, M2& value_func2, double gamma = 0.9
 				value_func[s] = m;
 			else
 				value_func2[s] = m;
+		}
+	}
+}
+
+// value_iteration - In-place value iteration
+template <class E, class M>
+void value_iteration(E& env, M& value_func, double gamma = 0.9, int iterations = 1000) {
+	typedef typename E::State State;
+	typedef typename E::Action Action;
+	auto states = env.states();
+	for each (State s in states)
+		value_func[s] = env.vreward(s);
+
+	for (int i = 0; i < iterations; i++) {
+		for each (State s in states) {
+			if (env.terminate(s))
+				continue;
+			auto actions = env.actions(s);
+			assert(actions.size() > 0);
+			double m = -oo;
+			for each (Action a in actions) {
+				auto allStates = env.goAll(s, a);
+				double j = 0;
+				for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
+					j += (it2->second) * value_func[it2->first];
+				}
+				j = j * gamma + env.qreward(s, a);
+				m = std::max(m, j);
+			}
+			m += env.vreward(s);
+			value_func[s] = m;
 		}
 	}
 }
