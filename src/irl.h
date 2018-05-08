@@ -17,18 +17,20 @@
 // 关于Policy P
 // 所有的P指的是一个Policy类，也可以用于存放q(s,a)
 // Policy类包含以下内容
-// double& operator ()(State &s, Action &a) 在s做动作a的概率
-// 某些函数要求返回值必须是一个引用
+// double(&) operator ()(State &s, Action &a) 在s做动作a的概率
+// 某些修改policy的函数要求返回值必须是一个引用
 
 // 关于Map M
 // 所有的M指的是一个映射类，例如用于存放value function
-// M要求重载运算符[]
+// double& operator [](State &s)
 // 一般可以定义为 map<State, double>
 // 但是map比较慢，可以自己定义以优化速度
 
 #include <map>
 #include <vector>
 #include <iostream>
+#include <cassert>
+#include <algorithm>
 const double oo = 1e10;
 
 // dp - Dynamic Programming algorithm
@@ -47,6 +49,7 @@ void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000)
 				continue;
 			double ans = env.vreward(s);
 			auto actions = env.actions(s);
+			assert(actions.size() > 0);
 			for each (Action a in actions) {
 				double pr = policy(s, a);
 				double j = 0;
@@ -71,9 +74,10 @@ void vgreedy(E& env, P& policy, M& value_func, double gamma = 0.9) {
 	auto states = env.states();
 
 	for each (State s in states) {
-		auto actions = env.actions(s);
-		if (actions.size() == 0)
+		if (env.terminate(s))
 			continue;
+		auto actions = env.actions(s);
+		assert(actions.size() > 0);
 		double m = -oo;
 		Action ma = actions[0];
 		for each (Action a in actions) {
@@ -105,5 +109,43 @@ void policy_iteration(E& env, P& policy, M& value_func, double gamma = 0.9,
 	for (int i = 0; i < iterations; i++) {
 		dp(env, policy, value_func, gamma, trials);
 		vgreedy(env, policy, value_func, gamma);
+	}
+}
+
+// value_iteration
+// Will modify both value_func and value_func2
+// Final result will be stored in value_func
+// value_func2 is an auxillary storage
+template <class E, class M1, class M2>
+void value_iteration(E& env, M1& value_func, M2& value_func2, double gamma = 0.9, int iterations = 1000) {
+	typedef typename E::State State;
+	typedef typename E::Action Action;
+	auto states = env.states();
+	for each (State s in states)
+		value_func[s] = value_func2[s] = env.vreward(s);
+
+	for (int i = 0; i < iterations; i++) {
+		int i0 = (iterations + i) & 1;
+		for each (State s in states) {
+			if (env.terminate(s))
+				continue;
+			auto actions = env.actions(s);
+			assert(actions.size() > 0);
+			double m = -oo;
+			for each (Action a in actions) {
+				auto allStates = env.goAll(s, a);
+				double j = 0;
+				for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
+					j += (it2->second) * (i0 ? value_func2[it2->first] : value_func[it2->first]);
+				}
+				j = j * gamma + env.qreward(s, a);
+				m = std::max(m, j);
+			}
+			m += env.vreward(s);
+			if (i0)
+				value_func[s] = m;
+			else
+				value_func2[s] = m;
+		}
 	}
 }
