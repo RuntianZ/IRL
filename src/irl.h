@@ -37,14 +37,12 @@ void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000)
 	typedef typename E::State State;
 	typedef typename E::Action Action;
 	auto states = env.states();
-	int n = states.size();
-	for (int i = 0; i < n; i++)
-		value_func[states[i]] = env.vreward(states[i]);
+	for each (State s in states)
+		value_func[s] = env.vreward(s);
 
 	for (int t = 0; t < trials; t++) {
 		// std::cout << "check" << std::endl;
-		for (int i = 0; i < n; i++) {
-			State s = states[i];
+		for each (State s in states) {
 			if (env.terminate(s))
 				continue;
 			double ans = env.vreward(s);
@@ -71,10 +69,8 @@ void vgreedy(E& env, P& policy, M& value_func, double gamma = 0.9) {
 	typedef typename E::State State;
 	typedef typename E::Action Action;
 	auto states = env.states();
-	int n = states.size();
 
-	for (int i = 0; i < n; i++) {
-		State s = states[i];
+	for each (State s in states) {
 		auto actions = env.actions(s);
 		if (actions.size() == 0)
 			continue;
@@ -98,5 +94,16 @@ void vgreedy(E& env, P& policy, M& value_func, double gamma = 0.9) {
 			else
 				policy(s, a) = 0.0;
 		}
+	}
+}
+
+// policy_iteration
+// Will modify policy and value_func
+template <class E, class P, class M>
+void policy_iteration(E& env, P& policy, M& value_func, double gamma = 0.9, 
+	int trials = 200, int iterations = 30) {
+	for (int i = 0; i < iterations; i++) {
+		dp(env, policy, value_func, gamma, trials);
+		vgreedy(env, policy, value_func, gamma);
 	}
 }

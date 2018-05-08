@@ -12,14 +12,13 @@ int main() {
 	gw.loadMap(mp);
 	GridWorld::Policy p;
 	gw.loadPolicy(p);
-	dp(gw, p, mp, 0.9, 2000);
+	policy_iteration(gw, p, mp);
 	for (int i = 0; i < 5; i++) {
 		for (int j = 0; j < 5; j++) {
 			std::cout << mp[std::make_pair(i, j)] << "  ";
 		}
 		std::cout << std::endl;
 	}
-	vgreedy(gw, p, mp, 0.9);
 
 	return 0;
 }

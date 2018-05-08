@@ -109,7 +109,7 @@ public:
 		}
 	};
 	void loadPolicy(Policy &p) {
-		// 初始化为随机policy
+		// Random policy
 		p.storage.resize(m * n * 4);
 		p.n = n;
 		for (int i = 0; i < m; i++)
