@@ -30,10 +30,41 @@
 #include <vector>
 #include <iostream>
 #include <cassert>
+#include <ctime>
+#include <cstdlib>
 #include <algorithm>
 const double oo = 1e10;
 
-// dp - Dynamic Programming algorithm
+// 0. Helper functions
+
+// irl_init - Warm up irl
+void irl_init() {
+	srand(time(0));
+}
+
+// move - Make one move from a state (with randomness)
+// Will modify s
+template <class E>
+void move(E& env, typename E::State &s, typename E::Action &a) {
+	typedef typename E::State State;
+	typedef typename E::Action Action;
+	double r = double(rand()) / (double)(RAND_MAX);
+	const double eps = 1e-6;
+	auto allStates = env.goAll(s, a);
+	double j = 0;
+	auto ite = allStates.begin();
+	for (; ; ite++) {
+		assert(ite != allStates.end());
+		j += ite->second;
+		if (j + eps > r)
+			break;
+	}
+	s = ite->first;
+}
+
+// 1. Dynamic Programming Method
+
+// dp
 // Will modify both value_func and value_func2
 // Final result will be stored in value_func
 // value_func2 is an auxillary storage
@@ -73,7 +104,7 @@ void dp(E& env, P& policy, M1& value_func, M2& value_func2,
 	}
 }
 
-// dp - In-place dynamic Programming algorithm
+// dp - In-place dynamic programming algorithm
 template <class E, class P, class M>
 void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000) {
 	typedef typename E::State State;

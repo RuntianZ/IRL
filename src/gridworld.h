@@ -46,19 +46,6 @@ public:
 				ans.push_back(std::make_pair(i, j));
 		return ans;
 	}
-	State go(State &s, Action &a) {
-		switch (a) {
-		case UP:
-			return std::make_pair(s.first - 1, s.second);
-		case DOWN:
-			return std::make_pair(s.first + 1, s.second);
-		case LEFT:
-			return std::make_pair(s.first, s.second - 1);
-		case RIGHT:
-			return std::make_pair(s.first, s.second + 1);
-		}
-		return std::make_pair(0, 0); // Never reach here
-	}
 	std::vector<std::pair<State, double> > goAll(State &s, Action &a) {
 		std::vector<std::pair<State, double> > ans;
 		switch (a) {
