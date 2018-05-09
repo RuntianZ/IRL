@@ -36,6 +36,8 @@ public:
 	void loadMap(Map &mp) {
 		mp.storage.resize(m * n);
 		mp.n = n;
+		for (int i = 0; i < m * n; i++)
+			mp.storage[i] = 0;
 	}
 
 	std::vector<State> states() {
@@ -45,6 +47,30 @@ public:
 			for (int j = 0; j < n; j++)
 				ans.push_back(std::make_pair(i, j));
 		return ans;
+	}
+	State first() {
+		// Random start
+		double r1 = double(rand()) / double(RAND_MAX);
+		double r2 = double(rand()) / double(RAND_MAX);
+		int x = int(r1 * m), y = int(r2 * n);
+		if (x >= m)
+			x = m - 1;
+		if (y >= n)
+			y = n - 1;
+		return std::make_pair(x, y);
+	}
+	State go(State &s, Action &a) {
+		switch (a) {
+		case UP:
+			return std::make_pair(s.first - 1, s.second);
+		case DOWN:
+			return std::make_pair(s.first + 1, s.second);
+		case LEFT:
+			return std::make_pair(s.first, s.second - 1);
+		case RIGHT:
+			return std::make_pair(s.first, s.second + 1);
+		}
+		return std::make_pair(0, 0); // Never reach here
 	}
 	std::vector<std::pair<State, double> > goAll(State &s, Action &a) {
 		std::vector<std::pair<State, double> > ans;

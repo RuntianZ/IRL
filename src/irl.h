@@ -1,15 +1,15 @@
 #pragma once
 // 关于环境E
 // 以下template中所有的E指的是一个环境类
-// 环境类包含以下内容
+// 环境类包含以下方法(不一定全部包含，特定的算法要求包含特定的方法)
 // typedef State                         状态的类型
 // typedef Action                        动作的类型
 // vector<Action> actions(State s)       在某个状态下能做的所有动作
 // State go(State &s, Action &a)         在一个状态做一个动作到达的下一个状态(含随机性)
 // vector<pair<State, double>> goAll(State &s, Action &a)
 //                                       包含做动作后可能到达的每一个状态以及概率
-// State first()                         获得初始状态(可选)
-// vector<State> states()                获得所有状态(可选)
+// State first()                         获得初始状态
+// vector<State> states()                获得所有状态
 // double vreward(State s)               进入某一状态的瞬间可以获得的reward
 // double qreward(State s, Action a)     在某一状态做某一动作能得到的即时reward
 // bool terminate(State s)               返回某一个状态是否是终止状态
@@ -28,6 +28,7 @@
 
 #include <map>
 #include <vector>
+#include <stack>
 #include <iostream>
 #include <cassert>
 #include <ctime>
@@ -43,6 +44,7 @@ void irl_init() {
 }
 
 // move - Make one move from a state (with randomness)
+// suitable for known models
 // Will modify s
 template <class E>
 void move(E& env, typename E::State &s, typename E::Action &a) {
@@ -64,7 +66,7 @@ void move(E& env, typename E::State &s, typename E::Action &a) {
 
 // 1. Dynamic Programming Method
 
-// dp
+// dp - dynamic programming policy evaluation
 // Will modify both value_func and value_func2
 // Final result will be stored in value_func
 // value_func2 is an auxillary storage
@@ -255,6 +257,61 @@ void value_iteration(E& env, M& value_func, double gamma = 0.9, int iterations =
 			}
 			m += env.vreward(s);
 			value_func[s] = m;
+		}
+	}
+}
+
+// 2. Monte Carlo and Temporal Difference
+
+// mc - every-visit Monte Carlo policy evaluation
+// requires an auxillary counter array initialized to all zero
+// if first == nullptr, env.first() method will be used
+// does not guarantee that every state will receive a value
+template <class E, class P, class M, class Counter>
+void mc(E& env, P& policy, M& value_func, Counter& counter,
+	typename E::State *first = nullptr, double gamma = 0.9, int episodes = 200) {
+	typedef typename E::State State;
+	typedef typename E::Action Action;
+
+	for (int i = 0; i < episodes; i++) {
+		std::cout << i << std::endl;
+		std::stack<std::pair<State, Action> > history;
+		State s = first ? *first : env.first();
+		while (!env.terminate(s)) {
+			auto actions = env.actions(s);
+			Action ma = actions[0];
+			int flag = 0;
+			double r = double(rand()) / double(RAND_MAX);
+			double j = 0;
+			const double eps = 1e-6;
+			for each (Action a in actions) {
+				j += policy(s, a);
+				if (j + eps > r) {
+					flag = 1;
+					ma = a;
+					break;
+				}
+			}
+			assert(flag);
+			history.push(std::make_pair(s, ma));
+			s = env.go(s, ma);
+		}
+		double j = env.vreward(s);
+		value_func[s] = j;
+		while (!history.empty()) {
+			auto t = history.top();
+			State s = t.first;
+			Action a = t.second;
+			history.pop();
+			j = j * gamma + env.vreward(s) + env.qreward(s, a);
+			if (counter[s] == 0) {
+				counter[s] = 1;
+				value_func[s] = j;
+			}
+			else {
+				value_func[s] = double(counter[s]) / (counter[s] + 1) * value_func[s] + double(j) / (counter[s] + 1);
+				counter[s] += 1;
+			}
 		}
 	}
 }
