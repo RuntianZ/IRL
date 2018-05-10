@@ -1,11 +1,18 @@
 #include "irl.h"
 #include "gridworld.h"
+#include "zqtyt.h"
+#define DEBUGGL
+
 
 GridWorld gw(5, 5);
 
-int main() {
+int main(int argc, char **argv) {
 	irl_init();
-
+#ifdef DEBUGGL
+	GameBoard gb;
+	Viewer::init(&argc, argv);
+	Viewer::showWindow(gb);
+#else
 	gw.setReward(0, 0, 10.0);
 	gw.setReward(4, 4, 10.0);
 	gw.setReward(0, 4, 7.0);
@@ -26,5 +33,6 @@ int main() {
 		std::cout << std::endl;
 	}
 
+#endif
 	return 0;
 }

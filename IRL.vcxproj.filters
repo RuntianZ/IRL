@@ -21,6 +21,12 @@
     <ClInclude Include="src\gridworld.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="src\zqtyt.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gl_env.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
@@ -29,6 +35,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore">
+      <Filter>源文件</Filter>
+    </None>
+    <None Include="README.md">
       <Filter>源文件</Filter>
     </None>
   </ItemGroup>
