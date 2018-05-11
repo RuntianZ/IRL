@@ -76,32 +76,32 @@ void dp(E& env, P& policy, M1& value_func, M2& value_func2,
     typedef typename E::State State;
     typedef typename E::Action Action;
     auto states = env.states();
-    for each (State s in states)
-        value_func[s] = value_func2[s] = env.vreward(s);
+    for (auto ps = states.begin(); ps != states.end(); ps++)
+        value_func[*ps] = value_func2[*ps] = env.vreward(*ps);
 
     for (int t = 0; t < trials; t++) {
         int i0 = (trials + t) & 1;
         // std::cout << "check" << std::endl;
-        for each (State s in states) {
-            if (env.terminate(s))
+        for (auto ps = states.begin(); ps != states.end(); ps++) {
+            if (env.terminate(*ps))
                 continue;
-            double ans = env.vreward(s);
-            auto actions = env.actions(s);
+            double ans = env.vreward(*ps);
+            auto actions = env.actions(*ps);
             assert(actions.size() > 0);
-            for each (Action a in actions) {
-                double pr = policy(s, a);
+            for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+                double pr = policy(*ps, *pa);
                 double j = 0;
-                auto allStates = env.goAll(s, a);
+                auto allStates = env.goAll(*ps, *pa);
                 for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
                     j += (it2->second) * (i0 ? value_func2[it2->first] : value_func[it2->first]);
                 }
-                j = j * gamma + env.qreward(s, a);
+                j = j * gamma + env.qreward(*ps, *pa);
                 ans += pr * j;
             }
             if (i0)
-                value_func[s] = ans;
+                value_func[*ps] = ans;
             else
-                value_func2[s] = ans;
+                value_func2[*ps] = ans;
         }
     }
 }
@@ -112,28 +112,28 @@ void dp(E& env, P& policy, M& value_func, double gamma = 0.9, int trials = 1000)
     typedef typename E::State State;
     typedef typename E::Action Action;
     auto states = env.states();
-    for each (State s in states)
-        value_func[s] = env.vreward(s);
+    for (auto ps = states.begin(); ps != states.end(); ps++)
+        value_func[*ps] = env.vreward(*ps);
 
     for (int t = 0; t < trials; t++) {
         // std::cout << "check" << std::endl;
-        for each (State s in states) {
-            if (env.terminate(s))
+        for (auto ps = states.begin(); ps != states.end(); ps++) {
+            if (env.terminate(*ps))
                 continue;
-            double ans = env.vreward(s);
-            auto actions = env.actions(s);
+            double ans = env.vreward(*ps);
+            auto actions = env.actions(*ps);
             assert(actions.size() > 0);
-            for each (Action a in actions) {
-                double pr = policy(s, a);
+            for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+                double pr = policy(*ps, *pa);
                 double j = 0;
-                auto allStates = env.goAll(s, a);
+                auto allStates = env.goAll(*ps, *pa);
                 for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
                     j += (it2->second) * value_func[it2->first];
                 }
-                j = j * gamma + env.qreward(s, a);
+                j = j * gamma + env.qreward(*ps, *pa);
                 ans += pr * j;
             }
-            value_func[s] = ans;
+            value_func[*ps] = ans;
         }
     }
 }
@@ -146,30 +146,30 @@ void vgreedy(E& env, P& policy, M& value_func, double gamma = 0.9) {
     typedef typename E::Action Action;
     auto states = env.states();
 
-    for each (State s in states) {
-        if (env.terminate(s))
+    for (auto ps = states.begin(); ps != states.end(); ps++) {
+        if (env.terminate(*ps))
             continue;
-        auto actions = env.actions(s);
+        auto actions = env.actions(*ps);
         assert(actions.size() > 0);
         double m = -oo;
-        Action ma = actions[0];
-        for each (Action a in actions) {
-            auto allStates = env.goAll(s, a);
+        Action& ma = actions[0];
+        for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+            auto allStates = env.goAll(*ps, *pa);
             double j = 0;
             for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
                 j += (it2->second) * value_func[it2->first];
             }
-            j = j * gamma + env.qreward(s, a);
+            j = j * gamma + env.qreward(*ps, *pa);
             if (j > m) {
                 m = j;
-                ma = a;
+                ma = *pa;
             }
         }
-        for each (Action a in actions) {
-            if (a == ma)
-                policy(s, a) = 1.0;
+        for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+            if (*pa == ma)
+                policy(*ps, *pa) = 1.0;
             else
-                policy(s, a) = 0.0;
+                policy(*ps, *pa) = 0.0;
         }
     }
 }
@@ -201,31 +201,31 @@ void value_iteration(E& env, M1& value_func, M2& value_func2, double gamma = 0.9
     typedef typename E::State State;
     typedef typename E::Action Action;
     auto states = env.states();
-    for each (State s in states)
-        value_func[s] = value_func2[s] = env.vreward(s);
+    for (auto ps = states.begin(); ps != states.end(); ps++)
+        value_func[*ps] = value_func2[*ps] = env.vreward(*ps);
 
     for (int i = 0; i < iterations; i++) {
         int i0 = (iterations + i) & 1;
-        for each (State s in states) {
-            if (env.terminate(s))
+        for (auto ps = states.begin(); ps != states.end(); ps++) {
+            if (env.terminate(*ps))
                 continue;
-            auto actions = env.actions(s);
+            auto actions = env.actions(*ps);
             assert(actions.size() > 0);
             double m = -oo;
-            for each (Action a in actions) {
-                auto allStates = env.goAll(s, a);
+            for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+                auto allStates = env.goAll(*ps, *pa);
                 double j = 0;
                 for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
                     j += (it2->second) * (i0 ? value_func2[it2->first] : value_func[it2->first]);
                 }
-                j = j * gamma + env.qreward(s, a);
+                j = j * gamma + env.qreward(*ps, *pa);
                 m = std::max(m, j);
             }
-            m += env.vreward(s);
+            m += env.vreward(*ps);
             if (i0)
-                value_func[s] = m;
+                value_func[*ps] = m;
             else
-                value_func2[s] = m;
+                value_func2[*ps] = m;
         }
     }
 }
@@ -236,27 +236,27 @@ void value_iteration(E& env, M& value_func, double gamma = 0.9, int iterations =
     typedef typename E::State State;
     typedef typename E::Action Action;
     auto states = env.states();
-    for each (State s in states)
-        value_func[s] = env.vreward(s);
+    for (auto ps = states.begin(); ps != states.end(); ps++)
+        value_func[*ps] = env.vreward(*ps);
 
     for (int i = 0; i < iterations; i++) {
-        for each (State s in states) {
-            if (env.terminate(s))
+        for (auto ps = states.begin(); ps != states.end(); ps++) {
+            if (env.terminate(*ps))
                 continue;
-            auto actions = env.actions(s);
+            auto actions = env.actions(*ps);
             assert(actions.size() > 0);
             double m = -oo;
-            for each (Action a in actions) {
-                auto allStates = env.goAll(s, a);
+            for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+                auto allStates = env.goAll(*ps, *pa);
                 double j = 0;
                 for (auto it2 = allStates.begin(); it2 != allStates.end(); it2++) {
                     j += (it2->second) * value_func[it2->first];
                 }
-                j = j * gamma + env.qreward(s, a);
+                j = j * gamma + env.qreward(*ps, *pa);
                 m = std::max(m, j);
             }
-            m += env.vreward(s);
-            value_func[s] = m;
+            m += env.vreward(*ps);
+            value_func[*ps] = m;
         }
     }
 }
@@ -274,21 +274,21 @@ void mc(E& env, P& policy, M& value_func, Counter& counter,
     typedef typename E::Action Action;
 
     for (int i = 0; i < episodes; i++) {
-        std::cout << i << std::endl;
+        // std::cout << i << std::endl;
         std::stack<std::pair<State, Action> > history;
         State s = first ? *first : env.first();
         while (!env.terminate(s)) {
             auto actions = env.actions(s);
-            Action ma = actions[0];
+            Action& ma = actions[0];
             int flag = 0;
             double r = double(rand()) / double(RAND_MAX);
             double j = 0;
             const double eps = 1e-6;
-            for each (Action a in actions) {
-                j += policy(s, a);
+            for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+                j += policy(s, *pa);
                 if (j + eps > r) {
                     flag = 1;
-                    ma = a;
+                    ma = *pa;
                     break;
                 }
             }
@@ -300,18 +300,19 @@ void mc(E& env, P& policy, M& value_func, Counter& counter,
         value_func[s] = j;
         while (!history.empty()) {
             auto t = history.top();
-            State s = t.first;
-            Action a = t.second;
-            history.pop();
-            j = j * gamma + env.vreward(s) + env.qreward(s, a);
-            if (counter[s] == 0) {
-                counter[s] = 1;
-                value_func[s] = j;
+            State& s0 = t.first;
+            Action& a = t.second;
+            j = j * gamma + env.vreward(s0) + env.qreward(s0, a);
+            if (counter[s0] == 0) {
+                counter[s0] = 1;
+                value_func[s0] = j;
             }
             else {
-                value_func[s] = double(counter[s]) / (counter[s] + 1) * value_func[s] + double(j) / (counter[s] + 1);
-                counter[s] += 1;
+                value_func[s0] = double(counter[s0]) / (counter[s0] + 1) * value_func[s0] + 
+                    double(j) / (counter[s0] + 1);
+                counter[s0] += 1;
             }
+            history.pop();
         }
     }
 }

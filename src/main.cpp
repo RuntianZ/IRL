@@ -1,7 +1,7 @@
 #include "irl.h"
 #include "gridworld.h"
 #include "zqtyt.h"
-#define DEBUGGL
+#define DEBUGGLx
 
 
 GridWorld gw(5, 5);
@@ -22,9 +22,9 @@ int main(int argc, char **argv) {
     gw.loadMap(mp2);
     GridWorld::Policy p;
     gw.loadPolicy(p);
-    // policy_iteration(gw, p, mp);
-    // value_iteration(gw, mp);
-    // vgreedy(gw, p, mp);
+    //policy_iteration(gw, p, mp);
+    //value_iteration(gw, mp);
+    //vgreedy(gw, p, mp);
     mc(gw, p, mp, mp2);
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
