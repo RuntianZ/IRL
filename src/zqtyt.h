@@ -366,7 +366,7 @@ public:
             r = float(rand()) / float(RAND_MAX);
             int num_of_babies = int(r * 3) + 2;
             r = float(rand()) / float(RAND_MAX);
-            int sum_of_babies = int((r * 3.5 + 3) * num_of_balls);
+            int sum_of_babies = int((r * 4 + 3.5) * num_of_balls);
             float rd[6], rrd[6];
             r = 0;
             for (int i = 0; i <= num_of_babies; i++) {
@@ -423,7 +423,7 @@ const float GameBoard::shootery = 140.0;
 const float GameBoard::max_shooter_angle = 80.0;
 // 墙的位置(用一个盒子表示，分别代表左上角、左下角、右下角、右上角)
 const float GameBoard::box[8] = {
-    15.0, 150.0, 15.0, 15.0, 75.0, 15.0, 75.0, 150.0
+    10.0, 150.0, 10.0, 15.0, 80.0, 15.0, 80.0, 150.0
 };
 // 砖块的半径(中心点到顶点的距离)
 const float GameBoard::Block::triangle_radius = 6.0;
@@ -471,7 +471,7 @@ namespace Viewer {
     int mouseinit = 0, timeinit = 0;
     int lock = 0;
     int window_width = 360, window_height = 640;
-    const float max_t = 0.001;
+    const float max_t = 0.01;
 
     void drawString(const char* str) {
         for (; *str; str++)
