@@ -1,10 +1,7 @@
 #include "irl.h"
 #include "gridworld.h"
 #include "zqtyt.h"
-#define DEBUGGLx
-
-
-GridWorld gw(5, 5);
+#define DEBUGGL
 
 int main(int argc, char **argv) {
     irl_init();
@@ -13,6 +10,7 @@ int main(int argc, char **argv) {
     Viewer::init(&argc, argv);
     Viewer::showWindow(gb);
 #else
+    GridWorld gw(5, 5);
     gw.setReward(0, 0, 10.0);
     gw.setReward(4, 4, 10.0);
     gw.setReward(0, 4, 7.0);

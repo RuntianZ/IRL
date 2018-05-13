@@ -1,18 +1,23 @@
 // 最强弹一弹模拟程序
 #include "gl_env.h"
+#define _DEBUGx
 
 class GameBoard {
 private:
+
     inline float dot(float ax, float ay, float bx, float by) {
         return ax * bx + ay * by;
     }
 
     inline std::pair<float, float> symp(float px, float py, float ax, float ay, float bx, float by) {
+        float dm = (by - ay) * (by - ay) + (bx - ax) * (bx - ax);
+        assert(dm > 0);
         float dx = ((2 * ax - px) * (by - ay) * (by - ay)
             + (2 * py - 2 * ay) * (bx - ax) * (by - ay)
-            + px * (bx - ax) * (bx - ax))
-            / ((by - ay) * (by - ay) + (bx - ax) * (bx - ax));
-        float dy = (px - dx) * (bx - ax) / (by - ay) + py;
+            + px * (bx - ax) * (bx - ax)) / dm;
+        float dy = ((2 * ay - py) * (bx - ax) * (bx - ax)
+            + (2 * px - 2 * ax) * (by - ay) * (bx - ax)
+            + py * (by - ay) * (by - ay)) / dm;
         return std::make_pair(dx, dy);
     }
 
@@ -21,10 +26,16 @@ private:
         return std::make_pair(sp.first - cx, sp.second - cy);
     }
 
-    inline float dist(float px, float py, float ax, float ay, float bx, float by) {
+    inline float dist(float ax, float ay, float bx, float by) {
+        return sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by));
+    }
+
+    inline std::pair<float, bool> dist(float px, float py, float ax, float ay, float bx, float by) {
         auto sp = symp(px, py, ax, ay, bx, by);
-        double dx = sp.first, dy = sp.second;
-        return sqrt((dx - px) * (dx - px) + (dy - py) * (dy - py)) / 2.0;
+        float dx = sp.first, dy = sp.second;
+        float mx = 0.5 * (dx + px), my = 0.5 * (dy + py);
+        return std::make_pair(sqrt((dx - px) * (dx - px) + (dy - py) * (dy - py)) / 2.0,
+            (mx - ax) * (mx - bx) <= 0 && (my - ay) * (my - by) <= 0);
     }
 
     inline std::pair<float, float> collide(float vx, float vy, float nx, float ny) {
@@ -32,23 +43,77 @@ private:
         return std::make_pair(-sp.first, -sp.second);
     }
 
-    void check(float px, float py, float& vx, float& vy, float r,
+    // check - 碰撞检查
+    // 返回值:
+    // 0 - 无碰撞
+    // 1 - 有效碰撞
+    // 2 - 无效碰撞
+    // 3 - 有效碰撞且碰到顶点
+    int check(float px, float py, float& vx, float& vy, float r,
         float cx, float cy, float ax, float ay, float bx, float by, float fric) {
-        if (dist(px, py, ax, ay, bx, by) > r)
-            return;
+        double v = vx * vx + vy * vy;
+        if (dist(px, py, ax, ay) < r && dot(vx, vy, px - ax, py - ay) < 0) {
+            auto nv = collide(vx, vy, px - ax, py - ay);
+            vx = fric * nv.first;
+            vy = fric * nv.second;
+            return 3;
+        }
+        if (dist(px, py, bx, by) < r && dot(vx, vy, px - bx, py - by) < 0) {
+            auto nv = collide(vx, vy, px - bx, py - by);
+            vx = fric * nv.first;
+            vy = fric * nv.second;
+            return 3;
+        }
+        auto dt = dist(px, py, ax, ay, bx, by);
+        if (dt.first > r || !dt.second)
+            return 0;
         auto nm = norm(cx, cy, ax, ay, bx, by);
-        double nx = nm.first, ny = nm.second;
+        float nx = nm.first, ny = nm.second;
         if (dot(vx, vy, nx, ny) >= 0)
-            return;
+            return 0;
         auto nv = collide(vx, vy, nx, ny);
         vx = fric * nv.first;
         vy = fric * nv.second;
+        return 1;
+    }
+
+    int check(float px, float py, float& vx, float& vy, float r,
+        float cx, float cy, float r2, float fric) {
+        double v = vx * vx + vy * vy;
+        if (dist(px, py, cx, cy) > r + r2)
+            return 0;
+        float nx = px - cx, ny = py - cy;
+        if (dot(vx, vy, nx, ny) >= 0)
+            return 0;
+        auto nv = collide(vx, vy, nx, ny);
+        vx = fric * nv.first;
+        vy = fric * nv.second;
+        return 1;
+    }
+
+    int check(float cx1, float cy1, float& vx1, float& vy1,
+        float cx2, float cy2, float& vx2, float& vy2, float r, float fric) {
+        float d = dist(cx1, cy1, cx2, cy2);
+        float dt = dot(vx1 - vx2, vy1 - vy2, cx1 - cx2, cy1 - cy2);
+        if (d > 2.0 * r || dt >= 0)
+            return 0;
+        float d1 = dt / (d * d);
+        float nx1 = vx1 - d1 * (cx1 - cx2);
+        float ny1 = vy1 - d1 * (cy1 - cy2);
+        float d2 = dt / (d * d);
+        float nx2 = vx2 - d2 * (cx2 - cx1);
+        float ny2 = vy2 - d2 * (cy2 - cy1);
+        vx1 = nx1;
+        vy1 = ny1;
+        vx2 = nx2;
+        vy2 = ny2;
+        return 1;
     }
 public:
     struct Block {
         static const float triangle_radius, circle_radius, square_radius;
         enum Type {
-            TRIANGLE, CIRCLE, SQUARE
+            TRIANGLE, CIRCLE, SQUARE, NUM_OF_TYPES
         } type;
         int life;
         float colorr, colorg, colorb;
@@ -68,7 +133,7 @@ public:
     struct Ball {
         static const float radius;
         static const float colorr, colorg, colorb;
-        float centerx, centery, vx, vy;
+        float centerx, centery, vx, vy, time_death;
     };
 
     static const float windowx, windowy;
@@ -79,54 +144,71 @@ public:
     static const float birth_line, death_line;
     static const float delta_height;
     static const float init_v;
+    static const float time_death;
+    static const float valid_v;
     int score, num_of_balls, ball_left;
-    float time_turn, time_prev;
+    float time_turn, time_prev, turn_cnt;
     float shooter_angle;              // 发射器的角度(偏离垂直线，逆时针为正)
     std::vector<Block> blocks;        // 所有砖块
     std::vector<Ball> balls;          // 所有小球
     float ax, ay;                     // 加速度场
     float friction;                   // 摩擦系数
+    int testval;
 
     GameBoard():
-        score(0), num_of_balls(3), friction(0.5), ax(0.0), ay(0.0) {
-        shooter_angle = 10.0;
+        score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
+        ax(0.0), ay(-98.0), turn_cnt(0) {
+        ball_left = num_of_balls;
         Block t, s, c;
         t.type = Block::TRIANGLE;
         t.centerx = 40.0;
         t.centery = 40.0;
         t.angle = 20.0;
-        t.life = 5;
+        t.life = 3;
         s.type = Block::SQUARE;
-        s.centerx = 40.0;
+        s.centerx = 45.0;
         s.centery = 80.0;
-        s.angle = -10.0;
-        s.life = 50;
+        s.angle = 0.0;
+        s.life = 5;
         c.type = Block::CIRCLE;
-        c.centerx = 70.0;
+        c.centerx = 60.0;
         c.centery = 40.0;
-        c.life = 500;
+        c.life = 5;
         blocks.push_back(t);
         blocks.push_back(s);
         blocks.push_back(c);
-        Ball b1, b2;
-        b1.centerx = 70.0;
-        b1.centery = 80.0;
-        b1.vx = 0.0;
-        b1.vy = 0.0;
-        b2.centerx = 55.0;
-        b2.centery = 80.0;
-        b2.vx = 0.0;
-        b2.vy = 0.0;
-        balls.push_back(b1);
-        balls.push_back(b2);
-        time_turn = 0;
-        ball_left = 0;
+        testval = 0;
+    }
+
+    void fillTriangle(Block& bk, float& x1, float& y1, float& x2, float& y2,
+        float& x3, float& y3) {
+        assert(bk.type == Block::TRIANGLE);
+        x1 = bk.centerx + bk.triangle_radius * sin(-bk.angle / 180.0 * M_PI);
+        y1 = bk.centery + bk.triangle_radius * cos(-bk.angle / 180.0 * M_PI);
+        x2 = bk.centerx + bk.triangle_radius * sin((-bk.angle + 120.0) / 180.0 * M_PI);
+        y2 = bk.centery + bk.triangle_radius * cos((-bk.angle + 120.0) / 180.0 * M_PI);
+        x3 = bk.centerx + bk.triangle_radius * sin((-bk.angle - 120.0) / 180.0 * M_PI);
+        y3 = bk.centery + bk.triangle_radius * cos((-bk.angle - 120.0) / 180.0 * M_PI);
+    }
+
+    void fillSquare(Block& bk, float& x1, float& y1, float& x2, float& y2,
+        float& x3, float& y3, float& x4, float& y4) {
+        assert(bk.type == Block::SQUARE);
+        x1 = bk.centerx + bk.square_radius * sin((-bk.angle + 45.0) / 180.0 * M_PI);
+        y1 = bk.centery + bk.square_radius * cos((-bk.angle + 45.0) / 180.0 * M_PI);
+        x2 = bk.centerx + bk.square_radius * sin((-bk.angle - 45.0) / 180.0 * M_PI);
+        y2 = bk.centery + bk.square_radius * cos((-bk.angle - 45.0) / 180.0 * M_PI);
+        x4 = bk.centerx + bk.square_radius * sin((-bk.angle + 135.0) / 180.0 * M_PI);
+        y4 = bk.centery + bk.square_radius * cos((-bk.angle + 135.0) / 180.0 * M_PI);
+        x3 = bk.centerx + bk.square_radius * sin((-bk.angle - 135.0) / 180.0 * M_PI);
+        y3 = bk.centery + bk.square_radius * cos((-bk.angle - 135.0) / 180.0 * M_PI);
     }
 
     // shoot - 按照当前角度发射
     void shoot() {
-        time_turn = 0;
-        ball_left = num_of_balls;
+        time_turn = shooter_freq;
+        time_prev = 0;
+        assert(balls.size() == 0);
     }
 
     // step - 时间过去t秒钟
@@ -137,6 +219,10 @@ public:
     // 2 - 游戏结束
     int step(float t) {
         time_turn += t;
+        testval++;
+        if (testval == 591) {
+            testval = 590;
+        }
 
         // 1. Balls move forward
         for (auto bl = balls.begin(); bl != balls.end(); bl++) {
@@ -151,13 +237,14 @@ public:
             time_prev += shooter_freq;
             ball_left--;
             Ball bl;
-            bl.vx = init_v * sin(shooter_angle * M_PI / 180.0);
-            bl.vy = -init_v * cos(shooter_angle * M_PI / 180.0);
+            bl.vx = init_v * sin(-shooter_angle * M_PI / 180.0);
+            bl.vy = -init_v * cos(-shooter_angle * M_PI / 180.0);
             float t0 = time_turn - time_prev;
             bl.centerx = shooterx + bl.vx * t0;
             bl.centery = shootery + bl.vy * t0;
             bl.vx += ax * t0;
             bl.vy += ay * t0;
+            bl.time_death = time_death;
             balls.push_back(bl);
         }
 
@@ -167,20 +254,160 @@ public:
                 0.0, 0.0, box[0], box[1], box[2], box[3], friction);
             check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
                 windowx, 0.0, box[4], box[5], box[6], box[7], friction);
-            double mx = 0.5 * (box[0] + box[6]);
-            double my = 0.5 * (box[1] + box[7]);
+            float mx = 0.5 * (box[0] + box[6]);
+            float my = 0.5 * (box[1] + box[7]);
             check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
                 mx, my, box[0], box[1], shooterx, shootery, friction);
             check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
                 mx, my, box[6], box[7], shooterx, shootery, friction);
-            check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
-                0.0, 0.0, box[4], box[5], box[2], box[3], friction);
+            // check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+            //     0.0, 0.0, box[4], box[5], box[2], box[3], friction);
         }
 
+#define _COLLIDE_PROCESS { \
+        bk->life--; \
+        score++; \
+        }
+
+        // 4. Balls and blocks
+        for (auto bl = balls.begin(); bl != balls.end(); bl++) {
+            for (auto bk = blocks.begin(); bk != blocks.end(); bk++) {
+                float x1, y1, x2, y2, x3, y3, x4, y4;
+                switch (bk->type) {
+                case Block::TRIANGLE:
+                    fillTriangle(*bk, x1, y1, x2, y2, x3, y3);
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x1, y1, x2, y2, friction) & 1)
+                        _COLLIDE_PROCESS
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x3, y3, x2, y2, friction) & 1)
+                        _COLLIDE_PROCESS
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x1, y1, x3, y3, friction) & 1)
+                        _COLLIDE_PROCESS
+                    break;
+                case Block::SQUARE:
+                    fillSquare(*bk, x1, y1, x2, y2, x3, y3, x4, y4);
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x1, y1, x2, y2, friction) & 1)
+                        _COLLIDE_PROCESS
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x3, y3, x2, y2, friction) & 1)
+                        _COLLIDE_PROCESS
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x3, y3, x4, y4, friction) & 1)
+                        _COLLIDE_PROCESS
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, x1, y1, x4, y4, friction) & 1)
+                        _COLLIDE_PROCESS
+                    break;
+                case Block::CIRCLE:
+                    if (check(bl->centerx, bl->centery, bl->vx, bl->vy, bl->radius,
+                        bk->centerx, bk->centery, bk->circle_radius, friction) == 1)
+                        _COLLIDE_PROCESS
+                }
+            }
+        }
+
+        // 5. Clean up blocks
+        int nblocks = 0;
+        for (auto bk = blocks.begin(); bk != blocks.end(); bk++) {
+            assert(bk->life >= 0);
+            if (bk->life > 0)
+                blocks[nblocks++] = *bk;
+        }
+        blocks.resize(nblocks);
+
+        // 6. Balls and balls
+        for (auto bl = balls.begin(); bl != balls.end(); bl++)
+            for (auto bl2 = bl + 1; bl2 != balls.end(); bl2++) {
+                check(bl->centerx, bl->centery, bl->vx, bl->vy, bl2->centerx,
+                    bl2->centery, bl2->vx, bl2->vy, bl->radius, friction);
+            }
+
+        // 7. Clean up balls
+        int nballs = 0;
+        for (auto bl = balls.begin(); bl != balls.end(); bl++) {
+            if (bl->vx * bl->vx + bl->vy * bl->vy < valid_v * valid_v)
+                bl->time_death -= t;
+            else
+                bl->time_death = time_death;
+            if (bl->time_death < 0)
+                continue;
+            if (bl->centery < box[3] && bl->centery < box[5] &&
+                dist(bl->centerx, bl->centery, box[2], box[3], box[4], box[5]).first > bl->radius)
+                continue;
+            balls[nballs++] = *bl;
+        }
+        balls.resize(nballs);
+
+        // 8. End turn
+        if (nballs == 0 && ball_left == 0) {
+            int game_over = 1;
+
+            // Blocks go up
+            for (auto bk = blocks.begin(); bk != blocks.end(); bk++) {
+                bk->centery += delta_height;
+                if (bk->centery > death_line)
+                    game_over = 2;
+            }
+
+            if (game_over == 2)
+                return 2;
+
+            // Create new blocks
+            turn_cnt++;
+            float r = float(rand()) / float(RAND_MAX);
+            if (r * turn_cnt > 1.0) {
+                num_of_balls++;
+                turn_cnt = 0;
+            }
+            ball_left = num_of_balls;
+            r = float(rand()) / float(RAND_MAX);
+            int num_of_babies = int(r * 3) + 2;
+            r = float(rand()) / float(RAND_MAX);
+            int sum_of_babies = int((r * 3.5 + 3) * num_of_balls);
+            float rd[6], rrd[6];
+            r = 0;
+            for (int i = 0; i <= num_of_babies; i++) {
+                rd[i] = float(rand()) / float(RAND_MAX);
+                r += rd[i];
+            }
+            for (int i = 0; i <= num_of_babies; i++)
+                rd[i] /= r;
+            r = 0;
+            for (int i = 0; i < num_of_babies; i++) {
+                rrd[i] = float(rand()) / float(RAND_MAX);
+                r += rrd[i];
+            }
+            for (int i = 0; i < num_of_babies; i++)
+                rrd[i] /= r;
+            float ds = box[4] - box[2] - 8.0 * (num_of_babies + 1);
+            float f = box[2] + 8.0;
+            for (int i = 0; i < num_of_babies; i++, f += 8.0) {
+                r = float(rand()) / float(RAND_MAX);
+                Block bk;
+                bk.type = Block::Type(int(r * bk.NUM_OF_TYPES));
+                r = float(rand()) / float(RAND_MAX);
+                bk.angle = (r - 0.5) * M_PI * 2.0;
+                f += rd[i] * ds;
+                bk.centerx = f;
+                bk.centery = birth_line;
+                int life = (i == num_of_babies - 1) ? sum_of_babies : int(rrd[i] * sum_of_babies);
+                if (life == 0)
+                    continue;
+                sum_of_babies -= life;
+                bk.life = life;
+                blocks.push_back(bk);
+                if (sum_of_babies <= 0)
+                    break;
+            }
+
+            return 1;
+        }
 
         return 0;
     }
-
 };  // class GameBoard
 
 // ======================================================
@@ -194,9 +421,9 @@ const float GameBoard::shooterx = 45.0;
 const float GameBoard::shootery = 140.0;
 // 发射器最大角度
 const float GameBoard::max_shooter_angle = 80.0;
-// 墙的位置(用一个盒子表示，分别代表左上角、左下角、右上角、右下角)
+// 墙的位置(用一个盒子表示，分别代表左上角、左下角、右下角、右上角)
 const float GameBoard::box[8] = {
-    5.0, 150.0, 5.0, 15.0, 85.0, 15.0, 85.0, 150.0
+    15.0, 150.0, 15.0, 15.0, 75.0, 15.0, 75.0, 150.0
 };
 // 砖块的半径(中心点到顶点的距离)
 const float GameBoard::Block::triangle_radius = 6.0;
@@ -211,17 +438,29 @@ const float GameBoard::Ball::colorb = 0.4;
 // 发射两个小球之间间隔的时间
 const float GameBoard::shooter_freq = 0.3;
 // 出生线和死亡线
-const float GameBoard::birth_line = 20.0;
+const float GameBoard::birth_line = 25.0;
 const float GameBoard::death_line = 130.0;
 // 每回合上升的高度
-const float GameBoard::delta_height = 15.0;
+const float GameBoard::delta_height = 13.0;
 // 发射器给予小球的初始速度
-const float GameBoard::init_v = 5.0;
+const float GameBoard::init_v = 100.0;
+// 小球死亡时间
+const float GameBoard::time_death = 5.0;
+const float GameBoard::valid_v = 5.0;
 
 // ======================================================
 
 // 可视化游戏界面
 namespace Viewer {
+    void checkGL()
+    {
+#ifdef _DEBUGa
+        glFinish();
+        GLenum error = glGetError();
+        assert(error == GL_NO_ERROR);
+#endif
+    }
+
     void init(int *argc, char **argv) {
         glutInit(argc, argv);
     }
@@ -230,7 +469,7 @@ namespace Viewer {
     GameBoard *gb;
     float mousex, mousey;
     int mouseinit = 0, timeinit = 0;
-    int lock = 1;
+    int lock = 0;
     int window_width = 360, window_height = 640;
     const float max_t = 0.001;
 
@@ -251,8 +490,24 @@ namespace Viewer {
         glEnd();
     }
 
-    void display_main() {
+    void display() {
         // Initialization
+        if (!timeinit) {
+            timeinit = 1;
+            time_prev = clock() / float(CLOCKS_PER_SEC);
+        }
+        if (lock == 1) {
+            float time_now = clock() / float(CLOCKS_PER_SEC);
+            float t = time_now - time_prev;
+            if (t > max_t)
+                t = max_t;
+            int ans = gb->step(t);
+            time_prev = time_now;
+            if (ans == 1)
+                lock = 0;
+            else if (ans == 2)
+                lock = 2;
+        }
         glClear(GL_COLOR_BUFFER_BIT);
 
         // 1. Draw shooter
@@ -266,31 +521,28 @@ namespace Viewer {
         glVertex2f(gb->shooterx + 10.0 * sin((-20.0 + gb->shooter_angle) / 180.0 * M_PI),
                    gb->shootery + 10.0 * cos((-20.0 + gb->shooter_angle) / 180.0 * M_PI));
         glEnd();
+        checkGL();
 
         // 2. Draw blocks and mark lives
         for (auto bk = gb->blocks.begin(); bk != gb->blocks.end(); bk++) {
             glColor3f(bk->colorr, bk->colorg, bk->colorb);
+            float x1, y1, x2, y2, x3, y3, x4, y4;
             switch (bk->type) {
             case GameBoard::Block::TRIANGLE:
+                gb->fillTriangle(*bk, x1, y1, x2, y2, x3, y3);
                 glBegin(GL_TRIANGLES);
-                glVertex2f(bk->centerx + bk->triangle_radius * sin(-bk->angle / 180.0 * M_PI), 
-                           bk->centery + bk->triangle_radius * cos(-bk->angle / 180.0 * M_PI));
-                glVertex2f(bk->centerx + bk->triangle_radius * sin((-bk->angle + 120.0) / 180.0 * M_PI),
-                           bk->centery + bk->triangle_radius * cos((-bk->angle + 120.0) / 180.0 * M_PI));
-                glVertex2f(bk->centerx + bk->triangle_radius * sin((-bk->angle - 120.0) / 180.0 * M_PI),
-                           bk->centery + bk->triangle_radius * cos((-bk->angle - 120.0) / 180.0 * M_PI));
+                glVertex2f(x1, y1);
+                glVertex2f(x2, y2);
+                glVertex2f(x3, y3);
                 glEnd();
                 break;
             case GameBoard::Block::SQUARE:
+                gb->fillSquare(*bk, x1, y1, x2, y2, x3, y3, x4, y4);
                 glBegin(GL_TRIANGLE_STRIP);
-                glVertex2f(bk->centerx + bk->square_radius * sin((-bk->angle + 45.0) / 180.0 * M_PI),
-                           bk->centery + bk->square_radius * cos((-bk->angle + 45.0) / 180.0 * M_PI));
-                glVertex2f(bk->centerx + bk->square_radius * sin((-bk->angle - 45.0) / 180.0 * M_PI),
-                           bk->centery + bk->square_radius * cos((-bk->angle - 45.0) / 180.0 * M_PI));
-                glVertex2f(bk->centerx + bk->square_radius * sin((-bk->angle + 135.0) / 180.0 * M_PI),
-                           bk->centery + bk->square_radius * cos((-bk->angle + 135.0) / 180.0 * M_PI));
-                glVertex2f(bk->centerx + bk->square_radius * sin((-bk->angle - 135.0) / 180.0 * M_PI),
-                           bk->centery + bk->square_radius * cos((-bk->angle - 135.0) / 180.0 * M_PI));
+                glVertex2f(x1, y1);
+                glVertex2f(x2, y2);
+                glVertex2f(x4, y4);
+                glVertex2f(x3, y3);
                 glEnd();
                 break;
             case GameBoard::Block::CIRCLE:
@@ -302,11 +554,13 @@ namespace Viewer {
             sprintf(str, "%d", bk->life);
             drawString(str);
         }
+        checkGL();
 
         // 3. Draw balls
         glColor3f(GameBoard::Ball::colorr, GameBoard::Ball::colorg, GameBoard::Ball::colorb);
         for (auto bl = gb->balls.begin(); bl != gb->balls.end(); bl++)
             drawCircle(bl->centerx, bl->centery, bl->radius);
+        checkGL();
 
         // 4. Draw walls and fill borders
         glColor3f(1.0, 1.0, 1.0);
@@ -330,6 +584,7 @@ namespace Viewer {
         glVertex2f(gb->box[2], gb->box[3]);
         glVertex2f(gb->box[4], gb->box[5]);
         glEnd();
+        checkGL();
 
         // 5. Draw hint line
         if (!lock && mouseinit) {
@@ -344,6 +599,7 @@ namespace Viewer {
             glColor3f(0.5, 0.5, 0.5);
             drawCircle(float(mousex), float(mousey), GameBoard::Ball::radius);
         }
+        checkGL();
 
         // 6. Show score and number of balls
         glColor3f(0.0, 0.0, 0.0);
@@ -354,31 +610,30 @@ namespace Viewer {
         glRasterPos2f(GameBoard::shooterx, GameBoard::shootery + 10.0);
         sprintf(str, "%d", gb->ball_left);
         drawString(str);
+        checkGL();
+
+        // 7. Game Over
+        if (lock == 2) {
+            float mx = GameBoard::windowx / 2, my = GameBoard::windowy / 2;
+            glColor3f(0.5, 0.5, 0.5);
+            glBegin(GL_TRIANGLE_STRIP);
+            glVertex2f(mx - 20.0, my - 10.0);
+            glVertex2f(mx - 20.0, my + 10.0);
+            glVertex2f(mx + 20.0, my - 10.0);
+            glVertex2f(mx + 20.0, my + 10.0);
+            glEnd();
+            glColor3f(1.0, 0.0, 0.0);
+            glRasterPos2d(mx - 15.0, my + 3.0);
+            drawString("Game Over!");
+            glColor3f(0.0, 0.0, 0.0);
+            glRasterPos2f(mx - 15.0, my - 3.0);
+            sprintf(str, "Score: %d", gb->score);
+            drawString(str);
+        }
 
         // Termination
-        glFlush();
-    }
-
-    void display() {
-        if (!timeinit) {
-            timeinit = 1;
-            time_prev = clock() / float(CLOCKS_PER_SEC);
-        }
-        do {
-            display_main();
-            if (lock) {
-                float time_now;
-                double t = 0;
-                do {
-                    time_now = clock() / float(CLOCKS_PER_SEC);
-                    t = time_now - time_prev;
-                } while (t < max_t);
-                if (t > max_t)
-                    t = max_t;
-                gb->step(t);
-                time_prev = time_now;
-            }
-        } while (lock);
+        glutSwapBuffers();
+        glutPostRedisplay();
     }
 
     void motion(int x, int y) {
@@ -411,6 +666,7 @@ namespace Viewer {
     void mouse(int button, int state, int x, int y) {
         if (lock || !mouseinit || button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
             return;
+        gb->shoot();
         lock = 1;
         time_prev = clock() / float(CLOCKS_PER_SEC);
     }
@@ -431,6 +687,7 @@ namespace Viewer {
         glutPassiveMotionFunc(motion);
         glutDisplayFunc(display);
         glutReshapeFunc(reshape);
+        glutMouseFunc(mouse);
 
         glutMainLoop();
     }
