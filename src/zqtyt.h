@@ -489,7 +489,7 @@ namespace Viewer {
     float time_prev;
     GameBoard *gb;
     float mousex, mousey;
-    int mouseinit = 0, timeinit = 0;
+    int mouseinit = 0, timeinit = 0, hintline = 0;
     int lock = 0;
     int window_width = 360, window_height = 640;
     const float max_t = 0.01;
@@ -609,13 +609,30 @@ namespace Viewer {
 
         // 5. Draw hint line
         if (!lock && mouseinit) {
+            const float delta_t = 0.05;
             glColor3f(1.0, 0.0, 0.0);
             glLineStipple(2, 0x5555);
             glEnable(GL_LINE_STIPPLE);
-            glBegin(GL_LINES);
-            glVertex2f(GameBoard::shooterx, GameBoard::shootery);
-            glVertex2f(mousex, mousey);
-            glEnd();
+            if (hintline == 0) {
+                glBegin(GL_LINES);
+                glVertex2f(GameBoard::shooterx, GameBoard::shootery);
+                glVertex2f(mousex, mousey);
+                glEnd();
+            }
+            else {
+                float t = 0, tx = gb->shooterx, ty = gb->shootery;
+                glBegin(GL_LINE_STRIP);
+                while (ty > mousey) {
+                    glVertex2f(tx, ty);
+                    t += delta_t;
+                    tx = gb->shooterx - gb->init_v * sin(gb->shooter_angle * M_PI / 180.0) * t
+                        + 0.5 * gb->ax * t * t;
+                    ty = gb->shootery - gb->init_v * cos(gb->shooter_angle * M_PI / 180.0) * t
+                        + 0.5 * gb->ay * t * t;
+                }
+                glVertex2f(mousex, mousey);
+                glEnd();
+            }
             glDisable(GL_LINE_STIPPLE);
             glColor3f(0.5, 0.5, 0.5);
             drawCircle(float(mousex), float(mousey), GameBoard::Ball::radius);
@@ -657,6 +674,38 @@ namespace Viewer {
         glutPostRedisplay();
     }
 
+    float calc(float px, float py) {
+        float theta = -gb->max_shooter_angle;
+        const float delta_theta = 0.5;
+        const float delta_t = delta_theta * M_PI / 180.0;
+        float k;
+        float x = px - gb->shooterx;
+        float y = py - gb->shootery;
+        float mt = gb->max_shooter_angle + 1.0, mk = 0.5;
+        while (theta <= gb->max_shooter_angle) {
+            float t = theta * M_PI / 180.0;
+            float vs = gb->init_v * sin(-t);
+            float vc = gb->init_v * cos(-t);
+            if (gb->ay != 0) {
+                float ct = (vc - sqrt(vc * vc + 2 * y * gb->ay)) / gb->ay;
+                k = fabs(vs * ct + 0.5 * gb->ax * ct * ct - x);
+            }
+            else if (gb->ax != 0) {
+                float ct = (-vs + sqrt(vs * vs + 2 * x * gb->ax)) / gb->ax;
+                k = fabs(-vc * ct + 0.5 * gb->ay * ct * ct - y);
+            }
+            else {
+                k = fabs(sin(t) * y + cos(t) * x);
+            }
+            if (k < mk) {
+                mk = k;
+                mt = theta;
+            }
+            theta += delta_theta;
+        }
+        return mt;
+    }
+
     void motion(int x, int y) {
         if (lock)
             return;
@@ -665,7 +714,10 @@ namespace Viewer {
         mouseinit = 1;
         mousex = px;
         mousey = py;
-        gb->shooter_angle = atan((GameBoard::shooterx - px) / (GameBoard::shootery - py)) / M_PI * 180.0;
+        if (hintline == 0)
+            gb->shooter_angle = atan((GameBoard::shooterx - px) / (GameBoard::shootery - py)) / M_PI * 180.0;
+        else
+            gb->shooter_angle = calc(px, py);
         if (py >= gb->shootery ||
             gb->shooter_angle > gb->max_shooter_angle || gb->shooter_angle < -gb->max_shooter_angle) {
             gb->shooter_angle = 0;
@@ -685,11 +737,17 @@ namespace Viewer {
     }
 
     void mouse(int button, int state, int x, int y) {
-        if (lock || !mouseinit || button != GLUT_LEFT_BUTTON || state != GLUT_DOWN)
+        if (lock || !mouseinit || state != GLUT_DOWN)
             return;
-        gb->shoot();
-        lock = 1;
-        time_prev = clock() / float(CLOCKS_PER_SEC);
+        if (button == GLUT_LEFT_BUTTON) {
+            gb->shoot();
+            lock = 1;
+            time_prev = clock() / float(CLOCKS_PER_SEC);
+        }
+        else if (button == GLUT_RIGHT_BUTTON) {
+            hintline = 1 - hintline;
+            motion(x, y);
+        }
     }
 
     // showWindow - 显示图形化界面
