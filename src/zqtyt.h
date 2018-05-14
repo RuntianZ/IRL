@@ -4,8 +4,17 @@
 
 class GameBoard {
 private:
-
+    const static float max_u;
     inline float dot(float ax, float ay, float bx, float by) {
+        float d = ax * bx + ay * by;
+        float n = sqrt(ax * ax + ay * ay) * sqrt(bx * bx + by * by);
+        if (n == 0.0)
+            return 0.0;
+        else
+            return d / n;
+    }
+
+    inline float dot2(float ax, float ay, float bx, float by) {
         return ax * bx + ay * by;
     }
 
@@ -51,50 +60,53 @@ private:
     // 3 - 有效碰撞且碰到顶点
     int check(float px, float py, float& vx, float& vy, float r,
         float cx, float cy, float ax, float ay, float bx, float by, float fric) {
-        double v = vx * vx + vy * vy;
-        if (dist(px, py, ax, ay) < r && dot(vx, vy, px - ax, py - ay) < 0) {
+        float v = vx * vx + vy * vy;
+        float u = dot(vx, vy, px - ax, py - ay);
+        if (dist(px, py, ax, ay) < r && u < 0) {
             auto nv = collide(vx, vy, px - ax, py - ay);
             vx = fric * nv.first;
             vy = fric * nv.second;
-            return 3;
+            return (u > max_u) ? 2 : 3;
         }
-        if (dist(px, py, bx, by) < r && dot(vx, vy, px - bx, py - by) < 0) {
+        u = dot(vx, vy, px - bx, py - by);
+        if (dist(px, py, bx, by) < r && u < 0) {
             auto nv = collide(vx, vy, px - bx, py - by);
             vx = fric * nv.first;
             vy = fric * nv.second;
-            return 3;
+            return (u > max_u) ? 2 : 3;
         }
         auto dt = dist(px, py, ax, ay, bx, by);
         if (dt.first > r || !dt.second)
             return 0;
         auto nm = norm(cx, cy, ax, ay, bx, by);
         float nx = nm.first, ny = nm.second;
-        if (dot(vx, vy, nx, ny) >= 0)
+        if ((u = dot(vx, vy, nx, ny)) >= 0)
             return 0;
         auto nv = collide(vx, vy, nx, ny);
         vx = fric * nv.first;
         vy = fric * nv.second;
-        return 1;
+        return (u > max_u) ? 2 : 1;
     }
 
     int check(float px, float py, float& vx, float& vy, float r,
         float cx, float cy, float r2, float fric) {
-        double v = vx * vx + vy * vy;
+        float v = vx * vx + vy * vy;
         if (dist(px, py, cx, cy) > r + r2)
             return 0;
         float nx = px - cx, ny = py - cy;
-        if (dot(vx, vy, nx, ny) >= 0)
+        float u = dot(vx, vy, nx, ny);
+        if (u >= 0)
             return 0;
         auto nv = collide(vx, vy, nx, ny);
         vx = fric * nv.first;
         vy = fric * nv.second;
-        return 1;
+        return (u > max_u) ? 2 : 1;
     }
 
     int check(float cx1, float cy1, float& vx1, float& vy1,
         float cx2, float cy2, float& vx2, float& vy2, float r, float fric) {
         float d = dist(cx1, cy1, cx2, cy2);
-        float dt = dot(vx1 - vx2, vy1 - vy2, cx1 - cx2, cy1 - cy2);
+        float dt = dot2(vx1 - vx2, vy1 - vy2, cx1 - cx2, cy1 - cy2);
         if (d > 2.0 * r || dt >= 0)
             return 0;
         float d1 = dt / (d * d);
@@ -154,29 +166,22 @@ public:
     float ax, ay;                     // 加速度场
     float friction;                   // 摩擦系数
     int testval;
+    int mode;
 
-    GameBoard():
+    GameBoard(int game_mode = 0):
         score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
-        ax(0.0), ay(-98.0), turn_cnt(0) {
+        ax(0.0), ay(-98.0), turn_cnt(0), mode(game_mode) {
         ball_left = num_of_balls;
-        Block t, s, c;
-        t.type = Block::TRIANGLE;
-        t.centerx = 40.0;
-        t.centery = 40.0;
-        t.angle = 20.0;
-        t.life = 3;
-        s.type = Block::SQUARE;
-        s.centerx = 45.0;
-        s.centery = 80.0;
-        s.angle = 0.0;
-        s.life = 5;
-        c.type = Block::CIRCLE;
-        c.centerx = 60.0;
-        c.centery = 40.0;
-        c.life = 5;
-        blocks.push_back(t);
-        blocks.push_back(s);
-        blocks.push_back(c);
+        for (float x = 15.0; x < 75.0; x += 13.0)
+            for (float y = 20.0; y < 21.0; y += 13.0) {
+                Block bk;
+                bk.type = Block::TRIANGLE;
+                bk.centerx = x;
+                bk.centery = y;
+                bk.angle = 0.0;
+                bk.life = 3;
+                blocks.push_back(bk);
+            }
         testval = 0;
     }
 
@@ -389,7 +394,7 @@ public:
                 Block bk;
                 bk.type = Block::Type(int(r * bk.NUM_OF_TYPES));
                 r = float(rand()) / float(RAND_MAX);
-                bk.angle = (r - 0.5) * M_PI * 2.0;
+                bk.angle = (r - 0.5) * 180.0;
                 f += rd[i] * ds;
                 bk.centerx = f;
                 bk.centery = birth_line;
@@ -426,9 +431,9 @@ const float GameBoard::box[8] = {
     10.0, 150.0, 10.0, 15.0, 80.0, 15.0, 80.0, 150.0
 };
 // 砖块的半径(中心点到顶点的距离)
-const float GameBoard::Block::triangle_radius = 6.0;
-const float GameBoard::Block::square_radius = 6.0;
-const float GameBoard::Block::circle_radius = 5.0;
+const float GameBoard::Block::triangle_radius = 5.0;
+const float GameBoard::Block::square_radius = 5.0;
+const float GameBoard::Block::circle_radius = 4.0;
 // 小球的半径
 const float GameBoard::Ball::radius = 2.0;
 // 小球的颜色
@@ -447,6 +452,7 @@ const float GameBoard::init_v = 100.0;
 // 小球死亡时间
 const float GameBoard::time_death = 5.0;
 const float GameBoard::valid_v = 5.0;
+const float GameBoard::max_u = -0.01;
 
 // ======================================================
 
