@@ -4,14 +4,14 @@
 #include "easy_model.h"
 #define DEBUGGL
 
-EasyModel em;
-EasyModel::Policy p;
-EasyModel::Map mp;
+// EasyModel em;
+// EasyModel::Policy p;
+// EasyModel::Map mp;
 
 int main(int argc, char **argv) {
     irl_init();
 #ifdef DEBUGGL
-    GameBoard gb(1);
+    GameBoard gb(0);
     Viewer::init(&argc, argv);
     Viewer::showWindow(gb);
 #else

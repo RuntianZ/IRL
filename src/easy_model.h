@@ -25,7 +25,7 @@ public:
     }
     struct State {
         int h;
-        bool has_ball[5][3];
+        bool has_block[5][3];
         bool game_over;
         int hashcode() {
             if (game_over)
@@ -34,7 +34,7 @@ public:
             for (int j = 0; j < 3; j++)
                 for (int i = 0; i < 5; i++) {
                     ans *= 2;
-                    if (has_ball[i][j]) ans++;
+                    if (has_block[i][j]) ans++;
                 }
             return ans;
         }
@@ -44,8 +44,8 @@ public:
     std::vector<Action> actions(State &s) {
         float angles[50];
         int n = 0;
-        float f = -80.0;
-        while (f < 80.001) {
+        float f = -GameBoard::max_shooter_angle;
+        while (f < GameBoard::max_shooter_angle + 0.001) {
             angles[n++] = f;
             f += delta_angle;
         }
@@ -56,22 +56,23 @@ public:
     }
 
     void get_state() {
+        assert(gb->balls.size() == 0);
         int h = 0;
         state_now.game_over = false;
-        memset(state_now.has_ball, 0, sizeof(state_now.has_ball));
-        for (auto bl = gb->balls.begin(); bl != gb->balls.end(); bl++) {
-            int hc = int((bl->centery - GameBoard::birth_line + 0.01) / GameBoard::delta_height);
+        memset(state_now.has_block, 0, sizeof(state_now.has_block));
+        for (auto bk = gb->blocks.begin(); bk != gb->blocks.end(); bk++) {
+            int hc = int((bk->centery - GameBoard::birth_line + 0.01) / GameBoard::delta_height);
             h = std::max(h, hc);
         }
         state_now.h = h;
-        for (auto bl = gb->balls.begin(); bl != gb->balls.end(); bl++) {
-            int y = int((bl->centery - GameBoard::birth_line + 0.01) / GameBoard::delta_height);
+        for (auto bk = gb->blocks.begin(); bk != gb->blocks.end(); bk++) {
+            int y = int((bk->centery - GameBoard::birth_line + 0.01) / GameBoard::delta_height);
             y = h - y;
             if (y <= 2) {
                 int x = 0;
-                while (GameBoard::easiest_new_x[x] + 0.01 - bl->centerx < 0)
+                while (GameBoard::easiest_new_x[x] + 0.01 - bk->centerx < 0)
                     x++;
-                state_now.has_ball[x][y] = true;
+                state_now.has_block[x][y] = true;
             }
         }
     }

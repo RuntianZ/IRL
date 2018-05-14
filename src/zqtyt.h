@@ -7,15 +7,6 @@ class GameBoard {
 private:
     const static float max_u;
     inline float dot(float ax, float ay, float bx, float by) {
-        float d = ax * bx + ay * by;
-        float n = sqrt(ax * ax + ay * ay) * sqrt(bx * bx + by * by);
-        if (n == 0.0)
-            return 0.0;
-        else
-            return d / n;
-    }
-
-    inline float dot2(float ax, float ay, float bx, float by) {
         return ax * bx + ay * by;
     }
 
@@ -61,53 +52,50 @@ private:
     // 3 - 有效碰撞且碰到顶点
     int check(float px, float py, float& vx, float& vy, float r,
         float cx, float cy, float ax, float ay, float bx, float by, float fric) {
-        float v = vx * vx + vy * vy;
-        float u = dot(vx, vy, px - ax, py - ay);
-        if (dist(px, py, ax, ay) < r && u < 0) {
+        double v = vx * vx + vy * vy;
+        if (dist(px, py, ax, ay) < r && dot(vx, vy, px - ax, py - ay) < 0) {
             auto nv = collide(vx, vy, px - ax, py - ay);
             vx = fric * nv.first;
             vy = fric * nv.second;
-            return (u > max_u) ? 2 : 3;
+            return 3;
         }
-        u = dot(vx, vy, px - bx, py - by);
-        if (dist(px, py, bx, by) < r && u < 0) {
+        if (dist(px, py, bx, by) < r && dot(vx, vy, px - bx, py - by) < 0) {
             auto nv = collide(vx, vy, px - bx, py - by);
             vx = fric * nv.first;
             vy = fric * nv.second;
-            return (u > max_u) ? 2 : 3;
+            return 3;
         }
         auto dt = dist(px, py, ax, ay, bx, by);
         if (dt.first > r || !dt.second)
             return 0;
         auto nm = norm(cx, cy, ax, ay, bx, by);
         float nx = nm.first, ny = nm.second;
-        if ((u = dot(vx, vy, nx, ny)) >= 0)
+        if (dot(vx, vy, nx, ny) >= 0)
             return 0;
         auto nv = collide(vx, vy, nx, ny);
         vx = fric * nv.first;
         vy = fric * nv.second;
-        return (u > max_u) ? 2 : 1;
+        return 1;
     }
 
     int check(float px, float py, float& vx, float& vy, float r,
         float cx, float cy, float r2, float fric) {
-        float v = vx * vx + vy * vy;
+        double v = vx * vx + vy * vy;
         if (dist(px, py, cx, cy) > r + r2)
             return 0;
         float nx = px - cx, ny = py - cy;
-        float u = dot(vx, vy, nx, ny);
-        if (u >= 0)
+        if (dot(vx, vy, nx, ny) >= 0)
             return 0;
         auto nv = collide(vx, vy, nx, ny);
         vx = fric * nv.first;
         vy = fric * nv.second;
-        return (u > max_u) ? 2 : 1;
+        return 1;
     }
 
     int check(float cx1, float cy1, float& vx1, float& vy1,
         float cx2, float cy2, float& vx2, float& vy2, float r, float fric) {
         float d = dist(cx1, cy1, cx2, cy2);
-        float dt = dot2(vx1 - vx2, vy1 - vy2, cx1 - cx2, cy1 - cy2);
+        float dt = dot(vx1 - vx2, vy1 - vy2, cx1 - cx2, cy1 - cy2);
         if (d > 2.0 * r || dt >= 0)
             return 0;
         float d1 = dt / (d * d);
@@ -375,7 +363,7 @@ public:
                     turn_cnt = 0;
                 }
                 r = float(rand()) / float(RAND_MAX);
-                int num_of_babies = int(r * 3) + 2;
+                int num_of_babies = int(r * 3) + 1;
                 r = float(rand()) / float(RAND_MAX);
                 int sum_of_babies = int((r * 4 + 3.5) * num_of_balls);
                 float rd[6], rrd[6];
@@ -414,6 +402,7 @@ public:
                         break;
                 }
             }
+            break;
             case 1:
             {
                 // Easiest mode
