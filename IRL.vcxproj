@@ -122,6 +122,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\easy_model.h" />
     <ClInclude Include="src\gl_env.h" />
     <ClInclude Include="src\gridworld.h" />
     <ClInclude Include="src\irl.h" />

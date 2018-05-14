@@ -1,7 +1,12 @@
 #include "irl.h"
 #include "gridworld.h"
 #include "zqtyt.h"
+#include "easy_model.h"
 #define DEBUGGL
+
+EasyModel em;
+EasyModel::Policy p;
+EasyModel::Map mp;
 
 int main(int argc, char **argv) {
     irl_init();

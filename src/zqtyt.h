@@ -1,4 +1,5 @@
 // 最强弹一弹模拟程序
+#pragma once
 #include "gl_env.h"
 #define _DEBUGx
 
@@ -158,6 +159,7 @@ public:
     static const float init_v;
     static const float time_death;
     static const float valid_v;
+    static const float easiest_new_x[5];
     int score, num_of_balls, ball_left;
     float time_turn, time_prev, turn_cnt;
     float shooter_angle;              // 发射器的角度(偏离垂直线，逆时针为正)
@@ -415,13 +417,12 @@ public:
             case 1:
             {
                 // Easiest mode
-                const float new_x[5] = {15.0, 30.0, 45.0, 60.0, 75.0};
                 for (int i = 0; i < 5; i++) {
                     float r = float(rand()) / float(RAND_MAX);
                     if (r < 0.5) {
                         Block bk;
                         bk.angle = 0.0;
-                        bk.centerx = new_x[i];
+                        bk.centerx = easiest_new_x[i];
                         bk.centery = birth_line;
                         bk.type = Block::TRIANGLE;
                         r = float(rand()) / float(RAND_MAX);
@@ -477,6 +478,7 @@ const float GameBoard::init_v = 100.0;
 const float GameBoard::time_death = 5.0;
 const float GameBoard::valid_v = 5.0;
 const float GameBoard::max_u = -0.01;
+const float GameBoard::easiest_new_x[5] = { 15.0, 30.0, 45.0, 60.0, 75.0 };
 
 // ======================================================
 

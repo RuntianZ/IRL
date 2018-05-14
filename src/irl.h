@@ -26,6 +26,9 @@
 // 一般可以定义为 map<State, double>
 // 但是map比较慢，可以自己定义以优化速度
 
+// 实现细节
+// 1. vreward(s)和qreward(s, a)必须放在go(s, a)之前调用
+
 #include <map>
 #include <vector>
 #include <stack>
@@ -33,6 +36,7 @@
 #include <cassert>
 #include <ctime>
 #include <cstdlib>
+#include <cstring>
 #include <algorithm>
 const double oo = 1e10;
 
@@ -275,9 +279,10 @@ void mc(E& env, P& policy, M& value_func, Counter& counter,
 
     for (int i = 0; i < episodes; i++) {
         // std::cout << i << std::endl;
-        std::stack<std::pair<State, Action> > history;
+        std::stack<std::pair<std::pair<State, Action>, std::pair<double, double> > > history;
         State s = first ? *first : env.first();
         while (!env.terminate(s)) {
+            double vr = env.vreward(s);
             auto actions = env.actions(s);
             Action& ma = actions[0];
             int flag = 0;
@@ -293,16 +298,17 @@ void mc(E& env, P& policy, M& value_func, Counter& counter,
                 }
             }
             assert(flag);
-            history.push(std::make_pair(s, ma));
+            double qr = env.qreward(s, ma);
+            history.push(std::make_pair(std::make_pair(s, ma), std::make_pair(vr, qr)));
             s = env.go(s, ma);
         }
         double j = env.vreward(s);
         value_func[s] = j;
         while (!history.empty()) {
             auto t = history.top();
-            State& s0 = t.first;
-            Action& a = t.second;
-            j = j * gamma + env.vreward(s0) + env.qreward(s0, a);
+            State& s0 = t.first.first;
+            Action& a = t.first.second;
+            j = j * gamma + t.second.first + t.second.second;
             if (counter[s0] == 0) {
                 counter[s0] = 1;
                 value_func[s0] = j;
