@@ -172,16 +172,17 @@ public:
         score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
         ax(0.0), ay(-98.0), turn_cnt(0), mode(game_mode) {
         ball_left = num_of_balls;
-        for (float x = 15.0; x < 75.0; x += 13.0)
-            for (float y = 20.0; y < 21.0; y += 13.0) {
-                Block bk;
-                bk.type = Block::TRIANGLE;
-                bk.centerx = x;
-                bk.centery = y;
-                bk.angle = 0.0;
-                bk.life = 3;
-                blocks.push_back(bk);
-            }
+        Block bk1, bk2, bk3;
+        bk1.type = bk2.type = bk3.type = Block::TRIANGLE;
+        bk1.angle = bk2.angle = bk3.angle = 0.0;
+        bk1.centerx = 15.0;
+        bk2.centerx = 45.0;
+        bk3.centerx = 75.0;
+        bk1.centery = bk2.centery = bk3.centery = birth_line;
+        bk1.life = bk2.life = bk3.life = 6;
+        blocks.push_back(bk1);
+        blocks.push_back(bk2);
+        blocks.push_back(bk3);
         testval = 0;
     }
 
@@ -361,53 +362,76 @@ public:
                 return 2;
 
             // Create new blocks
-            turn_cnt++;
-            float r = float(rand()) / float(RAND_MAX);
-            if (r * turn_cnt > 1.0) {
-                num_of_balls++;
-                turn_cnt = 0;
+            switch (mode) {
+            case 0:
+            {
+                // Default mode
+                turn_cnt++;
+                float r = float(rand()) / float(RAND_MAX);
+                if (r * turn_cnt > 1.0) {
+                    num_of_balls++;
+                    turn_cnt = 0;
+                }
+                r = float(rand()) / float(RAND_MAX);
+                int num_of_babies = int(r * 3) + 2;
+                r = float(rand()) / float(RAND_MAX);
+                int sum_of_babies = int((r * 4 + 3.5) * num_of_balls);
+                float rd[6], rrd[6];
+                r = 0;
+                for (int i = 0; i <= num_of_babies; i++) {
+                    rd[i] = float(rand()) / float(RAND_MAX);
+                    r += rd[i];
+                }
+                for (int i = 0; i <= num_of_babies; i++)
+                    rd[i] /= r;
+                r = 0;
+                for (int i = 0; i < num_of_babies; i++) {
+                    rrd[i] = float(rand()) / float(RAND_MAX);
+                    r += rrd[i];
+                }
+                for (int i = 0; i < num_of_babies; i++)
+                    rrd[i] /= r;
+                float ds = box[4] - box[2] - 8.0 * (num_of_babies + 1);
+                float f = box[2] + 8.0;
+                for (int i = 0; i < num_of_babies; i++, f += 8.0) {
+                    r = float(rand()) / float(RAND_MAX);
+                    Block bk;
+                    bk.type = Block::Type(int(r * bk.NUM_OF_TYPES));
+                    r = float(rand()) / float(RAND_MAX);
+                    bk.angle = (r - 0.5) * 180.0;
+                    f += rd[i] * ds;
+                    bk.centerx = f;
+                    bk.centery = birth_line;
+                    int life = (i == num_of_babies - 1) ? sum_of_babies : int(rrd[i] * sum_of_babies);
+                    if (life == 0)
+                        continue;
+                    sum_of_babies -= life;
+                    bk.life = life;
+                    blocks.push_back(bk);
+                    if (sum_of_babies <= 0)
+                        break;
+                }
+            }
+            case 1:
+            {
+                // Easiest mode
+                const float new_x[5] = {15.0, 30.0, 45.0, 60.0, 75.0};
+                for (int i = 0; i < 5; i++) {
+                    float r = float(rand()) / float(RAND_MAX);
+                    if (r < 0.5) {
+                        Block bk;
+                        bk.angle = 0.0;
+                        bk.centerx = new_x[i];
+                        bk.centery = birth_line;
+                        bk.type = Block::TRIANGLE;
+                        r = float(rand()) / float(RAND_MAX);
+                        bk.life = int(r * 6.0 + 4.0);
+                        blocks.push_back(bk);
+                    }
+                }
+            }
             }
             ball_left = num_of_balls;
-            r = float(rand()) / float(RAND_MAX);
-            int num_of_babies = int(r * 3) + 2;
-            r = float(rand()) / float(RAND_MAX);
-            int sum_of_babies = int((r * 4 + 3.5) * num_of_balls);
-            float rd[6], rrd[6];
-            r = 0;
-            for (int i = 0; i <= num_of_babies; i++) {
-                rd[i] = float(rand()) / float(RAND_MAX);
-                r += rd[i];
-            }
-            for (int i = 0; i <= num_of_babies; i++)
-                rd[i] /= r;
-            r = 0;
-            for (int i = 0; i < num_of_babies; i++) {
-                rrd[i] = float(rand()) / float(RAND_MAX);
-                r += rrd[i];
-            }
-            for (int i = 0; i < num_of_babies; i++)
-                rrd[i] /= r;
-            float ds = box[4] - box[2] - 8.0 * (num_of_babies + 1);
-            float f = box[2] + 8.0;
-            for (int i = 0; i < num_of_babies; i++, f += 8.0) {
-                r = float(rand()) / float(RAND_MAX);
-                Block bk;
-                bk.type = Block::Type(int(r * bk.NUM_OF_TYPES));
-                r = float(rand()) / float(RAND_MAX);
-                bk.angle = (r - 0.5) * 180.0;
-                f += rd[i] * ds;
-                bk.centerx = f;
-                bk.centery = birth_line;
-                int life = (i == num_of_babies - 1) ? sum_of_babies : int(rrd[i] * sum_of_babies);
-                if (life == 0)
-                    continue;
-                sum_of_babies -= life;
-                bk.life = life;
-                blocks.push_back(bk);
-                if (sum_of_babies <= 0)
-                    break;
-            }
-
             return 1;
         }
 
@@ -467,7 +491,7 @@ namespace Viewer {
 #endif
     }
 
-    void init(int *argc, char **argv) {
+    inline void init(int *argc, char **argv) {
         glutInit(argc, argv);
     }
 
@@ -479,12 +503,12 @@ namespace Viewer {
     int window_width = 360, window_height = 640;
     const float max_t = 0.01;
 
-    void drawString(const char* str) {
+    inline void drawString(const char* str) {
         for (; *str; str++)
             glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, *str);
     }
 
-    void drawCircle(float x, float y, float r) {
+    inline void drawCircle(float x, float y, float r) {
         const int num_of_segments = 500;
         glBegin(GL_TRIANGLE_FAN);
         glVertex2f(x, y);

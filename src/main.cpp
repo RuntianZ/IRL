@@ -6,7 +6,7 @@
 int main(int argc, char **argv) {
     irl_init();
 #ifdef DEBUGGL
-    GameBoard gb;
+    GameBoard gb(1);
     Viewer::init(&argc, argv);
     Viewer::showWindow(gb);
 #else
