@@ -271,8 +271,8 @@ void value_iteration(E& env, M& value_func, double gamma = 0.9, int iterations =
 // requires an auxillary counter array initialized to all zero
 // if first == nullptr, env.first() method will be used
 // does not guarantee that every state will receive a value
-template <class E, class P, class M, class Counter>
-void mc(E& env, P& policy, M& value_func, Counter& counter,
+template <class E, class P, class M1, class M2>
+void mc(E& env, P& policy, M1& value_func, M2& counter,
     typename E::State *first = nullptr, double gamma = 0.9, int episodes = 200) {
     typedef typename E::State State;
     typedef typename E::Action Action;
@@ -320,5 +320,73 @@ void mc(E& env, P& policy, M& value_func, Counter& counter,
             }
             history.pop();
         }
+    }
+}
+
+// td - backward view td(lambda)
+// value_func should be initialized to all 0
+// requires an auxillary trace array (double type) initialized to all 0
+// requires a second auxillary array (boolean type) initialized to all 0
+// does not guarantee that every state will receive a value
+template <class E, class P, class M1, class M2, class M3>
+void td(E& env, P& policy, M1& value_func, M2& trace, 
+    M3& aux, typename E::State *first = nullptr, int iterations = 2000,
+    double gamma = 0.9, double alpha = 0.9, double lambda = 0.9) {
+    typedef typename E::State State;
+    typedef typename E::Action Action;
+    State s, s0;
+    std::vector<State> vec;
+    
+    bool first_run = true;
+
+    for (int i = 0; i < iterations; i++) {
+        if (first_run || env.terminate(s0)) {
+            if (first_run)
+                first_run = false;
+            else
+                value_func[s0] = env.vreward(s0);
+            for (auto ps = vec.begin(); ps != vec.end(); ps++) {
+                trace[*ps] = 0.0;
+                aux[*ps] = 0;
+            }
+            vec.resize(0);
+            while (true) {
+                if (i >= iterations)
+                    return;
+                s = first ? *first : env.first();
+                if (!env.terminate(s))
+                    break;
+                i++;
+                value_func[s] = env.vreward(s);
+            }
+        }
+        else
+            s = s0;
+        auto actions = env.actions(s);
+        Action& ma = actions[0];
+        int flag = 0;
+        double r = double(rand()) / double(RAND_MAX);
+        double j = 0;
+        const double eps = 1e-6;
+        for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+            j += policy(s, *pa);
+            if (j + eps > r) {
+                flag = 1;
+                ma = *pa;
+                break;
+            }
+        }
+        assert(flag);
+        double delta = env.qreward(s, ma);
+        s0 = env.go(s, ma);
+        if (aux[s] == 0) {
+            aux[s] = 1;
+            vec.push_back(s);
+        }
+        delta += env.vreward(s) + gamma * value_func[s0] - value_func[s];
+        for (auto ps = vec.begin(); ps != vec.end(); ps++)
+            trace[*ps] = gamma * lambda * trace[*ps] + (*ps == s) ? 1 : 0;
+        for (auto ps = vec.begin(); ps != vec.end(); ps++)
+            value_func[*ps] += alpha * delta * trace[*ps];
     }
 }
