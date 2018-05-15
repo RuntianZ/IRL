@@ -489,7 +489,7 @@ namespace Viewer {
     float time_prev;
     GameBoard *gb;
     float mousex, mousey;
-    int mouseinit = 0, timeinit = 0, hintline = 0;
+    int mouseinit = 0, timeinit = 0, hintline = 1;
     int lock = 0;
     int window_width = 360, window_height = 640;
     const float max_t = 0.01;

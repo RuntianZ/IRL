@@ -26,18 +26,20 @@ public:
         UP, DOWN, LEFT, RIGHT
     };
     typedef std::pair<int, int> State;
+    template <class T>
     struct Map {
-        std::vector<double> storage;
+        std::vector<T> storage;
         int n;
-        double & operator [] (State &s) {
+        T & operator [] (State &s) {
             return storage[s.first * n + s.second];
         }
     };
-    void loadMap(Map &mp) {
+    template <class T>
+    void loadMap(Map<T> &mp) {
         mp.storage.resize(m * n);
         mp.n = n;
         for (int i = 0; i < m * n; i++)
-            mp.storage[i] = 0;
+            mp.storage[i] = (T)0;
     }
 
     std::vector<State> states() {
@@ -114,14 +116,16 @@ public:
         return ans;
     }
 
+    template <class T>
     struct Policy {
         int n;
-        std::vector<double> storage;
-        double & operator () (State &s, Action &a) {
+        std::vector<T> storage;
+        T & operator () (State &s, Action &a) {
             return storage[(s.first * n + s.second) * 4 + a];
         }
     };
-    void loadPolicy(Policy &p) {
+    template <class T>
+    void loadPolicy(Policy<T> &p) {
         // Random policy
         p.storage.resize(m * n * 4);
         p.n = n;
@@ -132,7 +136,7 @@ public:
                 int t = ac.size();
                 if (t > 0) {
                     for each (Action a in ac) {
-                        p(s, a) = 1.0 / t;
+                        p(s, a) = (T)(1.0 / t);
                     }
                 }
             }

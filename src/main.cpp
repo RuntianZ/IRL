@@ -2,7 +2,7 @@
 #include "gridworld.h"
 #include "zqtyt.h"
 #include "easy_model.h"
-#define DEBUGGL
+#define DEBUGGLx
 
 // EasyModel em;
 // EasyModel::Policy p;
@@ -20,15 +20,16 @@ int main(int argc, char **argv) {
     gw.setReward(4, 4, 10.0);
     gw.setReward(0, 4, 7.0);
     gw.setReward(4, 0, 7.0);
-    GridWorld::Map mp, mp2;
+    GridWorld::Map<double> mp;
+    GridWorld::Map<int> cnt;
     gw.loadMap(mp);
-    gw.loadMap(mp2);
-    GridWorld::Policy p;
+    gw.loadMap(cnt);
+    GridWorld::Policy<double> p;
     gw.loadPolicy(p);
     //policy_iteration(gw, p, mp);
-    //value_iteration(gw, mp);
+    value_iteration(gw, mp);
     //vgreedy(gw, p, mp);
-    mc(gw, p, mp, mp2);
+    //mc(gw, p, mp, cnt);
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
             std::cout << mp[std::make_pair(i, j)] << "  ";

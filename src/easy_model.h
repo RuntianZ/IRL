@@ -119,36 +119,31 @@ public:
         return int((a + GameBoard::max_shooter_angle + 0.001) / delta_angle);
     }
 
+    template <class T>
     struct Policy {
-        double *storage;
+        std::vector<T> storage;
 
-        Policy() {
-            storage = new double[max_size * angle_num];
-        }
-        ~Policy() {
-            delete storage;
-        }
+        Policy() :
+            storage(max_size * angle_num) {}
 
-        double & operator ()(State& s, Action& a) {
-            return *(storage + s.hashcode() * actioncode(a));
+        T & operator ()(State& s, Action& a) {
+            return storage[s.hashcode() * actioncode(a)];
         }
     };
 
+    template <class T>
     struct Map {
-        double *storage;
+        std::vector<T> storage;
 
-        Map() {
-            storage = new double[max_size];
-        }
-        ~Map() {
-            delete storage;
-        }
+        Map() :
+            storage(max_size) {}
 
-        double & operator [](State& s) {
-            return *(storage + s.hashcode());
+        T & operator [](State& s) {
+            storage[s.hashcode()];
         }
         void clear() {
-            memset(storage, 0, max_size * sizeof(double));
+            for (int i = 0; i < max_size; i++)
+                storage[i] = (T)0;
         }
     };
 

@@ -17,13 +17,13 @@
 // 关于Policy P
 // 所有的P指的是一个Policy类，也可以用于存放q(s,a)
 // Policy类包含以下内容
-// double(&) operator ()(State &s, Action &a) 在s做动作a的概率
+// value_type(&) operator ()(State &s, Action &a)
 // 某些修改policy的函数要求返回值必须是一个引用
 
 // 关于Map M
 // 所有的M指的是一个映射类，例如用于存放value function
-// double& operator [](State &s)
-// 一般可以定义为 map<State, double>
+// value_type& operator [](State &s)
+// 一般可以定义为 map<State, value_type>
 // 但是map比较慢，可以自己定义以优化速度
 
 // 实现细节
