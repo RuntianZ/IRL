@@ -2,18 +2,27 @@
 #include "gridworld.h"
 #include "zqtyt.h"
 #include "easy_model.h"
-#define DEBUGGLx
-
-// EasyModel em;
-// EasyModel::Policy p;
-// EasyModel::Map mp;
+#define DEBUGGL
 
 int main(int argc, char **argv) {
     irl_init();
 #ifdef DEBUGGL
-    GameBoard gb(0);
     Viewer::init(&argc, argv);
-    Viewer::showWindow(gb);
+    EasyModelAI::init("test2.txt");
+    /*
+    int r = 0;
+    while (true) {
+        qlearning(EasyModelAI::em, EasyModelAI::qtable, nullptr, 10000);
+        if (r == 0)
+            EasyModelAI::save("test.txt");
+        else
+            EasyModelAI::save("test2.txt");
+        r = 1 - r;
+    }
+    */
+    EasyModelAI::em.first();
+    EasyModelAI::showWindow();
+
 #else
     GridWorld gw(5, 5);
     gw.setReward(0, 0, 10.0);
@@ -31,14 +40,17 @@ int main(int argc, char **argv) {
     //policy_iteration(gw, p, mp);
     //value_iteration(gw, mp);
     //vgreedy(gw, p, mp);
-    //mc(gw, p, mp, cnt);
-    td(gw, p, mp, trace, aux);
+    //mc(gw, p, mp, aux);
+    //td(gw, p, mp, trace, aux);
+    qlearning(gw, p);
+    /*
     for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
             std::cout << mp[std::make_pair(i, j)] << "  ";
         }
         std::cout << std::endl;
     }
+    */
 
 #endif
     return 0;

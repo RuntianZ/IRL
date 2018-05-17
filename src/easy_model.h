@@ -1,6 +1,7 @@
 #pragma once
 #include "irl.h"
 #include "zqtyt.h"
+#include <cstdio>
 
 // easiest mode的一个简单环境模型
 // 注意，该模型的使用必须严格按照以下使用顺序
@@ -10,12 +11,13 @@
 // 不可以对于同一个s多次调用qreward或go
 class EasyModel {
 private:
-    GameBoard *gb;
     static const float delta_angle;
     static const float delta_t;
     static const int zero_code, max_size, angle_num;
+    static const float death_penalty;
 
 public:
+    GameBoard *gb;
     EasyModel():
         gb(nullptr) {}
 
@@ -112,7 +114,7 @@ public:
     }
 
     double vreward(State& s) {
-        return 0.0;
+        return (s.game_over) ? death_penalty : 0.0;
     }
 
     inline static int actioncode(Action& a) {
@@ -128,6 +130,28 @@ public:
 
         T & operator ()(State& s, Action& a) {
             return storage[s.hashcode() * actioncode(a)];
+        }
+        void clear() {
+            for (int i = 0; i < max_size * angle_num; i++)
+                storage[i] = (T)0;
+        }
+        void save(const char* path) {
+            FILE *f;
+            f = fopen(path, "w");
+            fprintf(stderr, "Saving...\n");
+            for (int i = 0; i < max_size * angle_num; i++)
+                fprintf(f, "%lf ", storage[i]);
+            fclose(f);
+            fprintf(stderr, "Saved.\n");
+        }
+        void load(const char* path) {
+            FILE *f;
+            f = fopen(path, "r");
+            fprintf(stderr, "Loading...\n");
+            for (int i = 0; i < max_size * angle_num; i++)
+                fscanf(f, "%lf", &storage[i]);
+            fclose(f);
+            fprintf(stderr, "Loaded.\n");
         }
     };
 
@@ -147,7 +171,7 @@ public:
         }
     };
 
-};
+}; // class EasyModel
 
 const float EasyModel::delta_angle = 5.0;
 const float EasyModel::delta_t = 0.005;
@@ -155,3 +179,37 @@ const int EasyModel::angle_num =
     int((GameBoard::max_shooter_angle * 2.0 + 0.001) / EasyModel::delta_angle);
 const int EasyModel::zero_code = 98304;
 const int EasyModel::max_size = 294912;
+const float EasyModel::death_penalty = -1000.0;
+
+namespace EasyModelAI {
+    EasyModel em;
+    EasyModel::Policy<double> qtable;
+
+    void init(const char* path = nullptr) {
+        if (path == nullptr)
+            qtable.clear();
+        else
+            qtable.load(path);
+    }
+
+    void save(const char* path) {
+        qtable.save(path);
+    }
+
+    void ai(float& angle) {
+        em.get_state();
+        auto actions = em.actions(em.state_now);
+        double mq = -oo;
+        for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+            double cq = qtable(em.state_now, *pa);
+            if (cq > mq) {
+                mq = cq;
+                angle = *pa;
+            }
+        }
+    }
+
+    void showWindow() {
+        Viewer::showWindow(*em.gb, ai);
+    }
+} // namespace EasyModelAI

@@ -157,10 +157,11 @@ public:
     float friction;                   // 摩擦系数
     int testval;
     int mode;
+    static const float init_ax, init_ay;
 
     GameBoard(int game_mode = 0):
         score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
-        ax(0.0), ay(-98.0), turn_cnt(0), mode(game_mode) {
+        ax(init_ax), ay(init_ay), turn_cnt(0), mode(game_mode) {
         ball_left = num_of_balls;
         Block bk1, bk2, bk3;
         bk1.type = bk2.type = bk3.type = Block::TRIANGLE;
@@ -308,7 +309,10 @@ public:
         // 5. Clean up blocks
         int nblocks = 0;
         for (auto bk = blocks.begin(); bk != blocks.end(); bk++) {
-            assert(bk->life >= 0);
+            if (bk->life < 0) {
+                // std::cerr << bk->life << std::endl;
+                score -= bk->life;
+            }
             if (bk->life > 0)
                 blocks[nblocks++] = *bk;
         }
@@ -468,6 +472,8 @@ const float GameBoard::time_death = 5.0;
 const float GameBoard::valid_v = 5.0;
 const float GameBoard::max_u = -0.01;
 const float GameBoard::easiest_new_x[5] = { 15.0, 30.0, 45.0, 60.0, 75.0 };
+const float GameBoard::init_ax = 0.0;
+const float GameBoard::init_ay = -98.0;
 
 // ======================================================
 
@@ -488,6 +494,8 @@ namespace Viewer {
 
     float time_prev;
     GameBoard *gb;
+    typedef void(*ai_func)(float&);
+    ai_func ai = nullptr;
     float mousex, mousey;
     int mouseinit = 0, timeinit = 0, hintline = 1;
     int lock = 0;
@@ -511,6 +519,12 @@ namespace Viewer {
         glEnd();
     }
 
+    inline void step() {
+        gb->shoot();
+        lock = 1;
+        time_prev = clock() / float(CLOCKS_PER_SEC);
+    }
+
     void display() {
         // Initialization
         if (!timeinit) {
@@ -529,6 +543,14 @@ namespace Viewer {
             else if (ans == 2)
                 lock = 2;
         }
+
+        // AI
+        if (lock == 0 && ai != nullptr) {
+            ai(gb->shooter_angle);
+            step();
+        }
+
+
         glClear(GL_COLOR_BUFFER_BIT);
 
         // 1. Draw shooter
@@ -686,17 +708,9 @@ namespace Viewer {
             float t = theta * M_PI / 180.0;
             float vs = gb->init_v * sin(-t);
             float vc = gb->init_v * cos(-t);
-            if (gb->ay != 0) {
-                float ct = (vc - sqrt(vc * vc + 2 * y * gb->ay)) / gb->ay;
-                k = fabs(vs * ct + 0.5 * gb->ax * ct * ct - x);
-            }
-            else if (gb->ax != 0) {
-                float ct = (-vs + sqrt(vs * vs + 2 * x * gb->ax)) / gb->ax;
-                k = fabs(-vc * ct + 0.5 * gb->ay * ct * ct - y);
-            }
-            else {
-                k = fabs(sin(t) * y + cos(t) * x);
-            }
+            assert(gb->ay != 0);
+            float ct = (vc - sqrt(vc * vc + 2 * y * gb->ay)) / gb->ay;
+            k = fabs(vs * ct + 0.5 * gb->ax * ct * ct - x);
             if (k < mk) {
                 mk = k;
                 mt = theta;
@@ -737,13 +751,10 @@ namespace Viewer {
     }
 
     void mouse(int button, int state, int x, int y) {
-        if (lock || !mouseinit || state != GLUT_DOWN)
+        if (lock || !mouseinit || state != GLUT_DOWN || ai != nullptr)
             return;
-        if (button == GLUT_LEFT_BUTTON) {
-            gb->shoot();
-            lock = 1;
-            time_prev = clock() / float(CLOCKS_PER_SEC);
-        }
+        if (button == GLUT_LEFT_BUTTON)
+            step();
         else if (button == GLUT_RIGHT_BUTTON) {
             hintline = 1 - hintline;
             motion(x, y);
@@ -752,8 +763,9 @@ namespace Viewer {
 
     // showWindow - 显示图形化界面
     // 注意，一个程序只能显示一个界面
-    void showWindow(GameBoard &board) {
+    void showWindow(GameBoard &board, ai_func ai_function = nullptr) {
         gb = &board;
+        ai = ai_function;
         glutInitWindowPosition(100, 20);
         glutInitWindowSize(window_width, window_height);
         glutCreateWindow("Tan Yi Tan!");

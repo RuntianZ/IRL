@@ -266,6 +266,7 @@ void value_iteration(E& env, M& value_func, double gamma = 0.9, int iterations =
 }
 
 // 2. Monte Carlo and Temporal Difference
+// Algorithms in this part are based on value functions
 
 // mc - every-visit Monte Carlo policy evaluation
 // requires an auxillary counter array initialized to all zero
@@ -331,7 +332,7 @@ void mc(E& env, P& policy, M1& value_func, M2& counter,
 template <class E, class P, class M1, class M2, class M3>
 void td(E& env, P& policy, M1& value_func, M2& trace, 
     M3& aux, typename E::State *first = nullptr, int iterations = 2000,
-    double gamma = 0.9, double alpha = 0.9, double lambda = 0.9) {
+    double gamma = 0.9, double alpha = 0.1, double lambda = 0.9) {
     typedef typename E::State State;
     typedef typename E::Action Action;
     State s, s0;
@@ -388,5 +389,81 @@ void td(E& env, P& policy, M1& value_func, M2& trace,
             trace[*ps] = gamma * lambda * trace[*ps] + (*ps == s) ? 1 : 0;
         for (auto ps = vec.begin(); ps != vec.end(); ps++)
             value_func[*ps] += alpha * delta * trace[*ps];
+    }
+}
+
+// 3. Sarsa and Q-Learning
+// Algorithms in this part are based on Q-tables
+
+// sarsa
+
+
+// qlearning - Q-Learning algorithm
+// off-policy control
+template <class E, class P>
+void qlearning(E& env, P& qtable, typename E::State *first = nullptr, int iterations = 50000,
+    double gamma = 0.9, double alpha = 0.1, double epsilon = 0.9) {
+    typedef typename E::State State;
+    typedef typename E::Action Action;
+
+    State s, s0;
+    int j, j0;
+    bool first_run = true, flag = false;
+
+    for (int i = 0; i < iterations; i++) {
+        // std::cout << i << std::endl;
+        if (first_run || flag) {
+            first_run = false;
+            flag = false;
+            do {
+                s = first ? *first : env.first();
+            } while (env.terminate(s));
+        }
+        else
+            s = s0;
+        auto actions = env.actions(s);
+        int m = actions.size();
+
+        // use epsilon-greedy to select j
+        double r = double(rand()) / double(RAND_MAX);
+        if (r < epsilon) 
+            j = int(r / epsilon * m);
+        else {
+            double mq = -oo;
+            j = 0;
+            for (int k = 0; k < m; k++) {
+                double cq = qtable(s, actions[k]);
+                if (cq > mq) {
+                    mq = cq;
+                    j = k;
+                }
+            }
+        }
+        double qr = env.qreward(s, actions[j]);
+        s0 = env.go(s, actions[j]);
+        double vr = env.vreward(s0);
+        if (env.terminate(s0)) {
+            flag = true;
+            qtable(s, actions[j]) += alpha * (qr + vr - qtable(s, actions[j]));
+            continue;
+        }
+
+        auto actions0 = env.actions(s0);
+        int m0 = actions0.size();
+
+        // use greedy to select j0
+        double mq = -oo;
+        j0 = 0;
+        for (int k = 0; k < m0; k++) {
+            double cq = qtable(s0, actions0[k]);
+            if (cq > mq) {
+                mq = cq;
+                j0 = k;
+            }
+        }
+
+        qtable(s, actions[j]) += alpha * (qr + vr + 
+            gamma * qtable(s0, actions0[j0]) - qtable(s, actions[j]));
+        // std::cout << qtable(s, actions[j]) << std::endl;
     }
 }
