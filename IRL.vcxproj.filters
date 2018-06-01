@@ -30,9 +30,15 @@
     <ClInclude Include="src\easy_model.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="dll\zqtytdll.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="dll\zqtyt.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

@@ -5,7 +5,7 @@ import os
 import platform
 
 # Load library
-dllfile = 'zqtytdll.dll'
+dllfile = 'IRL.dll'
 if not os.path.exists(dllfile):
     raise FileNotFoundError("Required dll not found.")
 lib = cdll.LoadLibrary(dllfile)

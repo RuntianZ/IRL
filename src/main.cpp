@@ -1,7 +1,10 @@
+#include "gl_env.h"
+#ifndef DLL_MODE
 #include "irl.h"
 #include "gridworld.h"
 #include "zqtyt.h"
 #include "easy_model.h"
+
 #define DEBUGGL
 #define LEARNING
 
@@ -64,3 +67,4 @@ int main(int argc, char **argv) {
 #endif
     return 0;
 }
+#endif

@@ -1,6 +1,8 @@
 // Author: Runtian Zhai 1600012737
 
 #pragma once
+// Use the following if generating dll
+#define DLL_MODE
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
