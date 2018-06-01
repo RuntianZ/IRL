@@ -494,8 +494,11 @@ namespace Viewer {
 
     float time_prev;
     GameBoard *gb;
+    bool grid;
     typedef void(*ai_func)(float&);
     ai_func ai = nullptr;
+    ai_func learning = nullptr;
+    void(*k_func)();
     float mousex, mousey;
     int mouseinit = 0, timeinit = 0, hintline = 1;
     int lock = 0;
@@ -547,7 +550,8 @@ namespace Viewer {
         // AI
         if (lock == 0 && ai != nullptr) {
             ai(gb->shooter_angle);
-            step();
+            if (learning == nullptr)
+                step();
         }
 
 
@@ -732,6 +736,8 @@ namespace Viewer {
             gb->shooter_angle = atan((GameBoard::shooterx - px) / (GameBoard::shootery - py)) / M_PI * 180.0;
         else
             gb->shooter_angle = calc(px, py);
+        if (grid)
+            gb->shooter_angle = 5.0 * round(gb->shooter_angle / 5.0);
         if (py >= gb->shootery ||
             gb->shooter_angle > gb->max_shooter_angle || gb->shooter_angle < -gb->max_shooter_angle) {
             gb->shooter_angle = 0;
@@ -751,8 +757,16 @@ namespace Viewer {
     }
 
     void mouse(int button, int state, int x, int y) {
-        if (lock || !mouseinit || state != GLUT_DOWN || ai != nullptr)
+        if (lock || !mouseinit || state != GLUT_DOWN)
             return;
+        if (ai != nullptr) {
+            if (learning == nullptr)
+                return;
+            if (button == GLUT_LEFT_BUTTON) {
+                float tmp = gb->shooter_angle;
+                learning(tmp);
+            }
+        }
         if (button == GLUT_LEFT_BUTTON)
             step();
         else if (button == GLUT_RIGHT_BUTTON) {
@@ -761,11 +775,22 @@ namespace Viewer {
         }
     }
 
+    void keyboard(unsigned char key, int x, int y) {
+        if (lock == 1)
+            return;
+        if (key == 's')
+            k_func();
+    }
+
     // showWindow - 显示图形化界面
     // 注意，一个程序只能显示一个界面
-    void showWindow(GameBoard &board, ai_func ai_function = nullptr) {
+    void showWindow(GameBoard &board, ai_func ai_function = nullptr,
+        ai_func is_learning = nullptr, bool in_grid = false, void(*func)() = nullptr) {
         gb = &board;
         ai = ai_function;
+        grid = in_grid;
+        learning = is_learning;
+        k_func = func;
         glutInitWindowPosition(100, 20);
         glutInitWindowSize(window_width, window_height);
         glutCreateWindow("Tan Yi Tan!");
@@ -779,6 +804,8 @@ namespace Viewer {
         glutDisplayFunc(display);
         glutReshapeFunc(reshape);
         glutMouseFunc(mouse);
+        if (k_func != nullptr)
+            glutKeyboardFunc(keyboard);
 
         glutMainLoop();
     }

@@ -402,7 +402,7 @@ void td(E& env, P& policy, M1& value_func, M2& trace,
 // off-policy control
 template <class E, class P>
 void qlearning(E& env, P& qtable, typename E::State *first = nullptr, int iterations = 50000,
-    double gamma = 0.9, double alpha = 0.1, double epsilon = 0.9) {
+    double gamma = 0.9, double alpha = 0.1, double epsilon = 0.5) {
     typedef typename E::State State;
     typedef typename E::Action Action;
 

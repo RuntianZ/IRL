@@ -3,26 +3,35 @@
 #include "zqtyt.h"
 #include "easy_model.h"
 #define DEBUGGL
+#define LEARNING
+
+void k_func() {
+    EasyModelAI::save("test.txt", "pre.txt");
+}
 
 int main(int argc, char **argv) {
     irl_init();
 #ifdef DEBUGGL
     Viewer::init(&argc, argv);
-    EasyModelAI::init("test2.txt");
-    /*
+    //GameBoard gb(0);
+    //Viewer::showWindow(gb, nullptr, false);
+    EasyModelAI::init("test.txt", "pre.txt", k_func);
+
+#ifdef LEARNING
     int r = 0;
     while (true) {
         qlearning(EasyModelAI::em, EasyModelAI::qtable, nullptr, 10000);
         if (r == 0)
-            EasyModelAI::save("test.txt");
-        else
             EasyModelAI::save("test2.txt");
+        else
+            EasyModelAI::save("test.txt");
         r = 1 - r;
     }
-    */
+#else
+    
     EasyModelAI::em.first();
-    EasyModelAI::showWindow();
-
+    EasyModelAI::showWindow(true);
+#endif
 #else
     GridWorld gw(5, 5);
     gw.setReward(0, 0, 10.0);

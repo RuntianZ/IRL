@@ -18,13 +18,6 @@ private:
 
 public:
     GameBoard *gb;
-    EasyModel():
-        gb(nullptr) {}
-
-    ~EasyModel() {
-        if (gb)
-            delete gb;
-    }
     struct State {
         int h;
         bool has_block[5][3];
@@ -95,32 +88,6 @@ public:
         return s.game_over;
     }
 
-    double qreward(State& s, Action& a) {
-        int score_last = gb->score;
-        gb->shooter_angle = a;
-        gb->shoot();
-        while (true) {
-            int res = gb->step(delta_t);
-            if (res == 1) {
-                get_state();
-                break;
-            }
-            else if (res == 2) {
-                state_now.game_over = true;
-                break;
-            }
-        }
-        return gb->score - score_last;
-    }
-
-    double vreward(State& s) {
-        return (s.game_over) ? death_penalty : 0.0;
-    }
-
-    inline static int actioncode(Action& a) {
-        return int((a + GameBoard::max_shooter_angle + 0.001) / delta_angle);
-    }
-
     template <class T>
     struct Policy {
         std::vector<T> storage;
@@ -155,6 +122,37 @@ public:
         }
     };
 
+    Policy<double> *pre_qtable;
+
+    double qreward(State& s, Action& a) {
+        double reward = 0;
+        if (pre_qtable != nullptr)
+            reward = (*pre_qtable)(state_now, a);
+        int score_last = gb->score;
+        gb->shooter_angle = a;
+        gb->shoot();
+        while (true) {
+            int res = gb->step(delta_t);
+            if (res == 1) {
+                get_state();
+                break;
+            }
+            else if (res == 2) {
+                state_now.game_over = true;
+                break;
+            }
+        }
+        return reward + gb->score - score_last;
+    }
+
+    double vreward(State& s) {
+        return (s.game_over) ? death_penalty : 0.0;
+    }
+
+    inline static int actioncode(Action& a) {
+        return int((a + GameBoard::max_shooter_angle + 0.001) / delta_angle);
+    }
+
     template <class T>
     struct Map {
         std::vector<T> storage;
@@ -171,6 +169,14 @@ public:
         }
     };
 
+    EasyModel(Policy<double>* pre_q = nullptr) :
+        gb(nullptr), pre_qtable(pre_q) {}
+
+    ~EasyModel() {
+        if (gb)
+            delete gb;
+    }
+
 }; // class EasyModel
 
 const float EasyModel::delta_angle = 5.0;
@@ -179,21 +185,32 @@ const int EasyModel::angle_num =
     int((GameBoard::max_shooter_angle * 2.0 + 0.001) / EasyModel::delta_angle);
 const int EasyModel::zero_code = 98304;
 const int EasyModel::max_size = 294912;
-const float EasyModel::death_penalty = -1000.0;
+const float EasyModel::death_penalty = -10.0;
 
 namespace EasyModelAI {
-    EasyModel em;
-    EasyModel::Policy<double> qtable;
+    EasyModel::Policy<double> qtable, pre_q;
+    EasyModel em(&pre_q);
+    float my_action;
+    bool is_learning;
+    void(*k_func)();
 
-    void init(const char* path = nullptr) {
+    void init(const char* path = nullptr, const char* path_pre = nullptr,
+        void(*func)() = nullptr) {
         if (path == nullptr)
             qtable.clear();
         else
             qtable.load(path);
+        if (path_pre == nullptr)
+            pre_q.clear();
+        else
+            pre_q.load(path_pre);
+        k_func = func;
     }
 
-    void save(const char* path) {
+    void save(const char* path, const char* path_pre = nullptr) {
         qtable.save(path);
+        if (path_pre != nullptr)
+            pre_q.save(path_pre);
     }
 
     void ai(float& angle) {
@@ -204,12 +221,31 @@ namespace EasyModelAI {
             double cq = qtable(em.state_now, *pa);
             if (cq > mq) {
                 mq = cq;
-                angle = *pa;
+                my_action = *pa;
             }
+        }
+        if (!is_learning)
+            angle = my_action;
+    }
+
+    void learning(float& angle) {
+        float your_action = angle;
+        auto actions = em.actions(em.state_now);
+        float your_score = qtable(em.state_now, your_action);
+        std::cout << qtable(em.state_now, my_action) - your_score << std::endl;
+        for (auto pa = actions.begin(); pa != actions.end(); pa++) {
+            float delta_q = qtable(em.state_now, *pa) - your_score;
+            delta_q = 2.0 * (delta_q + 1.0);
+            qtable(em.state_now, *pa) -= delta_q;
+            pre_q(em.state_now, your_action) -= delta_q;
         }
     }
 
-    void showWindow() {
-        Viewer::showWindow(*em.gb, ai);
+    void showWindow(bool learn = false) {
+        is_learning = learn;
+        if (learn)
+            Viewer::showWindow(*em.gb, ai, learning, true, k_func);
+        else
+            Viewer::showWindow(*em.gb, ai);
     }
 } // namespace EasyModelAI
