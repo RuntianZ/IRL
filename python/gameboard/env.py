@@ -2,7 +2,8 @@
 # can only run on Windows
 from ctypes import *
 import os
-import platform
+import numpy as np
+import math
 
 # Load library
 dllfile = 'IRL.dll'
@@ -55,5 +56,62 @@ def move(angle):
     parse()
 
 
+max_x = 90
+max_y = 160
+radius = 20
+
+
+def intensity(x):
+    y = x / current_num_of_balls
+    y = 148.4040604 * (math.e - math.exp(1 / (0.1 * y + 1)))
+    return math.ceil(y)
+
+
 def image():
-    pass
+    img = np.zeros([max_x, max_y], np.int8)
+    global current_blocks
+
+    for block in current_blocks:
+        cx = block[2]
+        cy = block[3]
+        cl = block[1]
+        ca = block[4]
+        ca = ca - int(ca / 360) * 360
+        for dx in range(-radius, radius):
+            for dy in range(-radius, radius):
+                x = int(cx + dx)
+                y = int(cy + dy)
+                if dy == 0:
+                    if dx < 0:
+                        a = 90
+                    else:
+                        a = -90
+                elif dx == 0:
+                    if dy > 0:
+                        a = 0
+                    else:
+                        a = 180
+                else:
+                    a = math.atan(-dx/dy) * 180 / math.pi
+                if block[0] == 0:
+                    a = a - ca
+                    while a < -60:
+                        a = a + 120
+                    while a > 60:
+                        a = a - 120
+                    a = abs(a)
+                    maxd = 5 * math.cos(a * math.pi / 180)
+                elif block[0] == 2:
+                    a = a - ca
+                    while a < 0:
+                        a = a + 90
+                    while a > 90:
+                        a = a - 90
+                    a = abs(a - 45)
+                    maxd = 5 * math.cos(a * math.pi / 180)
+                else:
+                    maxd = 4
+                d = math.sqrt(dx * dx + dy * dy)
+                if d <= maxd:
+                    img[x, y] = intensity(cl)
+    return img

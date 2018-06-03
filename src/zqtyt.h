@@ -162,12 +162,16 @@ public:
     GameBoard(int game_mode = 0, bool should_init = true):
         score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
         ax(init_ax), ay(init_ay), turn_cnt(0), mode(game_mode) {
+        srand((unsigned int)(time(0)));
         ball_left = num_of_balls;
         if (!should_init)
             return;
         Block bk1, bk2, bk3;
-        bk1.type = bk2.type = bk3.type = Block::TRIANGLE;
-        bk1.angle = bk2.angle = bk3.angle = 0.0;
+        bk1.type = Block::TRIANGLE;
+        bk2.type = Block::CIRCLE;
+        bk3.type = Block::SQUARE;
+        bk1.angle = -30.0;
+        bk3.angle = 20.0;
         bk1.centerx = 15.0;
         bk2.centerx = 45.0;
         bk3.centerx = 75.0;

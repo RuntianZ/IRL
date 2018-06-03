@@ -6,7 +6,7 @@
 #include "easy_model.h"
 
 #define DEBUGGL
-#define LEARNING
+#define LEARNINGx
 
 void k_func() {
     EasyModelAI::save("test.txt", "pre.txt");
@@ -16,9 +16,9 @@ int main(int argc, char **argv) {
     irl_init();
 #ifdef DEBUGGL
     Viewer::init(&argc, argv);
-    //GameBoard gb(0);
-    //Viewer::showWindow(gb, nullptr, false);
-    EasyModelAI::init("test.txt", "pre.txt", k_func);
+    GameBoard gb(0);
+    Viewer::showWindow(gb, nullptr, false);
+    //EasyModelAI::init("test.txt", "pre.txt", k_func);
 
 #ifdef LEARNING
     int r = 0;
@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
     }
 #else
     
-    EasyModelAI::em.first();
-    EasyModelAI::showWindow(true);
+    //EasyModelAI::em.first();
+    //EasyModelAI::showWindow(true);
 #endif
 #else
     GridWorld gw(5, 5);
