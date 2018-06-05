@@ -1,27 +1,42 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import sys
-from gameboard import env            # Import the library
-                                     # Make sure that zqtytdll.dll is in your workspace
+from gameboard import env, dqn
+RL = dqn.DeepQNetwork(33, learning_rate=0.01, e_greedy=0.9,
+                      replace_target_iter=100, memory_size=2000, e_greedy_increment=0.001)
+action_list = [
+    -80.0, -75.0, -70.0, -65.0, -60.0, -55.0, -50.0, -45.0, -40.0, -35.0,
+    -30.0, -25.0, -20.0, -15.0, -10.0,  -5.0,   0.0,   5.0,  10.0,  15.0,
+    20.0,   25.0,  30.0,  35.0,  40.0,  45.0,  50.0,  55.0,  60.0,  65.0,
+    70.0,   75.0,  80.0
+]
+total_steps = 0
+min_steps = 1000
+num_episodes = 100
 
-env.start_game()                     # Start a new game
-img = env.image()
-x = []
-y = []
-for j in range(env.max_y - 1, 0, -1):
-    for i in range(env.max_x - 1):
-        if img[i, j] > 0:
-            x.append(i)
-            y.append(j)
-plt.scatter(x, y)
-plt.xlim((0, env.max_x))
-plt.ylim((0, env.max_y))
-plt.show()
-# while env.current_status == 1:       # current_status == 2 if game over, 1 if not
-#     env.move(0.0)                    # shoot the balls at angle = 0.0
-#     print(env.current_score)         # Show the score
-#     print(env.current_num_of_balls)  # Show number of balls
-#     print(env.current_blocks)        # Show the blocks, each item means [type, life, centerx, centery, angle]
-#                                      # Type: Triangle(0), Circle(1), Square(2)
-# print("Game Over! Your final score is: %d" % env.current_score)
-# env.start_game()                     # Start another game
+
+for i_episode in range(num_episodes):
+    env.start_game()
+    old_score = env.current_score
+    old_height = env.current_max_height
+    state = env.vector()
+    ep_r = 0
+    while env.current_status == 1:
+        action = RL.choose_action(state)
+        env.move(action_list[action])
+
+        # Computing reward
+        r1 = env.current_score - old_score                      # delta_score
+        r2 = 10 if env.current_max_height <= old_height else 0  # height reward
+        reward = r1 + r2
+
+        state = env.vector()
+        old_score = env.current_score
+        old_height = env.current_max_height
+        RL.store_transition(state, reward, action)
+
+        ep_r += reward
+        if total_steps > min_steps:
+            RL.learn()
+        total_steps += 1
+
+    print('episode: ', i_episode,
+          'ep_r: ', round(ep_r, 2),
+          ' epsilon: ', round(RL.epsilon, 2))

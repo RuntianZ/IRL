@@ -22,12 +22,14 @@ current_status = 1
 current_score = 0
 current_num_of_balls = 0
 current_blocks = None
+current_max_height = 0
 # [type, life, centerx, centery, angle] type: Triangle(0), Circle(1), Square(2)
 
 
 def parse():
-    global current_state
+    global current_state, current_max_height
     parse_res = current_state.split()
+    current_max_height = 0
     global current_status, current_score, current_num_of_balls, current_blocks
     current_status = int(parse_res[0])
     current_score = int(parse_res[1])
@@ -35,8 +37,11 @@ def parse():
     current_blocks = []
     n = len(parse_res)
     for i in range(4, n - 1, 5):
-        current_blocks.append([int(parse_res[i]), int(parse_res[i+1]),
-                               float(parse_res[i + 2]), float(parse_res[i + 3]), float(parse_res[i + 4])])
+        new_block = [int(parse_res[i]), int(parse_res[i+1]),
+                     float(parse_res[i + 2]), float(parse_res[i + 3]), float(parse_res[i + 4])]
+        current_blocks.append(new_block)
+        h = int((new_block[3] - 24.0) * 0.076923076923)
+        current_max_height = max(h, current_max_height)
 
 
 def start_game(game_mode=0):
@@ -108,7 +113,7 @@ def intensity(x):
 
 
 def image(blocks=None, num_of_balls=0):
-    img = np.zeros([max_x, max_y], np.int8)
+    img = np.zeros([max_x, max_y], np.int32)
     global current_blocks, current_num_of_balls, tmp_blocks, tmp_num_of_balls
     tmp_blocks = blocks or current_blocks
     tmp_num_of_balls = num_of_balls or current_num_of_balls
@@ -146,3 +151,21 @@ def image(blocks=None, num_of_balls=0):
                 if d <= maxd:
                     img[x, y] = intensity(cl)
     return img
+
+
+def vector(blocks=None, num_of_balls=0):
+    global current_blocks, current_num_of_balls, tmp_blocks, tmp_num_of_balls
+    tmp_blocks = blocks or current_blocks
+    tmp_num_of_balls = num_of_balls or current_num_of_balls
+
+    ans = np.zeros(81, np.int32)
+    c = [0, 9, 18, 27, 36, 45, 54, 63, 72]
+    for block in current_blocks:
+        h = int((block[3] - 24.0) * 0.076923076923)
+        i = c[h]
+        ans[i] = int(block[2])
+        ans[i + 1] = int(block[4])
+        ans[i + 2] = intensity(block[1])
+        c[h] = c[h] + 3
+
+    return ans

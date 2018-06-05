@@ -2,7 +2,7 @@
 
 #pragma once
 // Use the following if generating dll
-#define DLL_MODE
+#define DLL_MODEx
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
