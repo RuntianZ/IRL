@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 #ifdef DEBUGGL
     Viewer::init(&argc, argv);
     GameBoard gb(0);
-    Viewer::showWindow(gb, nullptr, false);
+    Viewer::showWindow(gb);
     //EasyModelAI::init("test.txt", "pre.txt", k_func);
 
 #ifdef LEARNING

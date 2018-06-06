@@ -30,11 +30,12 @@ class DeepQNetwork:
         # initial some other things
         self.learn_step_counter = 0
         self.state_size = 81
+        self.n_units = 512
         self.memory_counter = 0
         self.memory_index = 0
 
-        # double check how to set memory
-        self.memory = np.zeros((self.memory_size, self.state_size + 2))
+        # Memory arrangement: (s, s_, r, a)
+        self.memory = np.zeros((self.memory_size, self.state_size * 2 + 2))
 
         self._build_net()
 
@@ -49,43 +50,61 @@ class DeepQNetwork:
 
         self.sess.run(tf.global_variables_initializer())
         self.cost_his = []
+        self.saver = tf.train.Saver()
 
     def _build_net(self):
         # ---------inputs-------------
-        self.state = tf.placeholder(tf.int32, [None, self.state_size], name='state')
+        self.s = tf.placeholder(tf.float32, [None, self.state_size], name='s')
+        self.s_ = tf.placeholder(tf.float32, [None, self.state_size], name='s_')
+        self.r = tf.placeholder(tf.float32, [None, ], name='r')
+        self.a = tf.placeholder(tf.int32, [None, ], name='a')
 
-        w_initializer = tf.random_normal_initializer(0., 0.5)
+        w_initializer = tf.random_normal_initializer(0.0, 0.5)
         b_initializer = tf.constant_initializer(0.1)
 
-        # ---------eval_net_structure------------
+        # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            pass
-        # ---------target_net_structure----------
+            e1 = tf.layers.dense(self.s, self.n_units, tf.nn.relu, kernel_initializer=w_initializer,
+                                 bias_initializer=b_initializer, name='e1')
+            self.q_eval = tf.layers.dense(e1, self.n_actions, kernel_initializer=w_initializer,
+                                          bias_initializer=b_initializer, name='q')
+
+        # ------------------ build target_net ------------------
         with tf.variable_scope('target_net'):
-            pass
+            t1 = tf.layers.dense(self.s_, self.n_units, tf.nn.relu, kernel_initializer=w_initializer,
+                                 bias_initializer=b_initializer, name='t1')
+            self.q_next = tf.layers.dense(t1, self.n_actions, kernel_initializer=w_initializer,
+                                          bias_initializer=b_initializer, name='t2')
         with tf.variable_scope('q_target'):
-            pass
+            q_target = self.r + self.gamma * tf.reduce_max(self.q_next, axis=1, name='qmax')
+            self.q_target = tf.stop_gradient(q_target)
         with tf.variable_scope('q_eval'):
-            pass
+            a_indices = tf.stack([tf.range(tf.shape(self.a)[0], dtype=tf.int32), self.a], axis=1)
+            self.q0 = tf.gather_nd(params=self.q_eval, indices=a_indices)
         with tf.variable_scope('loss'):
-            self.loss = tf.losses.mean_squared_error(self.q_target, self.q_eval0)
+            self.loss = tf.losses.mean_squared_error(self.q_target, self.q0)
         with tf.variable_scope('train'):
             self.train0 = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
-    def store_transition(self, state, reward, action):
+    def store_transition(self, state, state_, reward, action):
         if self.memory_counter < self.memory_size:
-            self.memory[self.memory_counter, :] = np.append(state, reward, action)
+            self.memory[self.memory_counter, :] = np.append(state, np.append(state_, np.append(reward, action)))
             self.memory_counter += 1
         else:
-            self.memory[self.memory_index, :] = np.append(state, reward, action)
+            self.memory[self.memory_index, :] = np.append(state, np.append(state_, np.append(reward, action)))
             self.memory_index = (self.memory_index + 1) % self.memory_size
 
     def choose_action(self, st):
         if np.random.uniform() < self.epsilon:
-            val = self.sess.run(self.q_eval, feed_dict={self.state: st})
+            val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
             action = np.argmax(val)
         else:
             action = np.random.randint(0, self.n_actions)
+        return action
+
+    def greedy(self, st):
+        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
+        action = np.argmax(val)
         return action
 
     def learn(self):
@@ -104,9 +123,21 @@ class DeepQNetwork:
         _, cost = self.sess.run(
             [self.train0, self.loss],
             feed_dict={
-                self.state: batch_memory[:],
+                self.s: batch_memory[:, 0:self.state_size],
+                self.s_: batch_memory[:, self.state_size:self.state_size*2],
+                self.r: batch_memory[:, self.state_size*2],
+                self.a: batch_memory[:, self.state_size*2+1],
             })
         # ----------------------------------------------------
+        self.cost_his.append(cost)
 
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
         self.learn_step_counter += 1
+
+    def save(self, path):
+        save_path = self.saver.save(self.sess, path)
+        print("Model saved in path: %s" % save_path)
+
+    def load(self, path):
+        self.saver.restore(self.sess, path)
+        print("Successfully loaded.")
