@@ -4,6 +4,8 @@ from ctypes import *
 import os
 import numpy as np
 import math
+import threading
+import time
 
 # Load library
 dllfile = 'IRL.dll'
@@ -13,7 +15,13 @@ lib = cdll.LoadLibrary(dllfile)
 lib.start_game.restype = c_char_p
 lib.start_game.argtypes = [c_int]
 lib.move.restype = c_char_p
-lib.move.argtypes = [c_int, c_char_p, c_float]
+lib.move.argtypes = [c_float]
+lib.display.restype = c_int32
+lib.display.argtypes = []
+lib.shoot.restype = c_int32
+lib.shoot.argtypes = [c_float]
+lib.lock.restype = c_int32
+lib.lock.argtypes = []
 
 # Global data
 current_state = ""
@@ -57,7 +65,7 @@ def move(angle):
         raise EnvironmentError("Game is not started.")
     if current_status == 2:
         raise EnvironmentError("Game is over.")
-    current_state = lib.move(current_mode, current_state, angle)
+    current_state = lib.move(angle)
     parse()
 
 
@@ -109,7 +117,7 @@ def intensity(x):
     global tmp_num_of_balls
     y = x / tmp_num_of_balls
     y = 148.4040604 * (math.e - math.exp(1.0 / (0.1 * y + 1.0)))
-    return math.ceil(y)
+    return y
 
 
 def image(blocks=None, num_of_balls=0):
@@ -149,7 +157,7 @@ def image(blocks=None, num_of_balls=0):
                     maxd = 4.0
                 d = math.sqrt(dx * dx + dy * dy)
                 if d <= maxd:
-                    img[x, y] = intensity(cl)
+                    img[x, y] = math.ceil(intensity(cl))
     return img
 
 
@@ -158,14 +166,31 @@ def vector(blocks=None, num_of_balls=0):
     tmp_blocks = blocks or current_blocks
     tmp_num_of_balls = num_of_balls or current_num_of_balls
 
-    ans = np.zeros(81, np.int32)
+    ans = np.zeros(81, np.float32)
     c = [0, 9, 18, 27, 36, 45, 54, 63, 72]
     for block in current_blocks:
         h = int((block[3] - 24.0) * 0.076923076923)
-        i = c[h]
-        ans[i] = int(block[2])
-        ans[i + 1] = int(block[4])
-        ans[i + 2] = intensity(block[1])
-        c[h] = c[h] + 3
+        if h <= 8:
+            i = c[h]
+            ans[i] = float(block[2])
+            ans[i + 1] = float(block[4])
+            ans[i + 2] = intensity(block[1])
+            c[h] = c[h] + 3
 
     return ans
+
+
+def _action():
+    lib.display()
+
+
+def display():
+    t = threading.Thread(target=_action)
+    t.start()
+    time.sleep(2)
+
+
+def shoot(angle):
+    lib.shoot(angle)
+    while lib.lock() == 1:
+        time.sleep(1)
