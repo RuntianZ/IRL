@@ -156,11 +156,11 @@ public:
     float ax, ay;                     // 加速度场
     float friction;                   // 摩擦系数
     int testval;
-    int mode;
+    int mode, status;
     static const float init_ax, init_ay;
 
     GameBoard(int game_mode = 0, bool should_init = true):
-        score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), 
+        score(0), num_of_balls(3), friction(0.8), shooter_angle(0.0), status(1), 
         ax(init_ax), ay(init_ay), turn_cnt(0), mode(game_mode) {
         srand((unsigned int)(time(0)));
         ball_left = num_of_balls;
@@ -171,6 +171,7 @@ public:
         bk2.type = Block::CIRCLE;
         bk3.type = Block::SQUARE;
         bk1.angle = -30.0;
+        bk2.angle = 0.0;
         bk3.angle = 20.0;
         bk1.centerx = 15.0;
         bk2.centerx = 45.0;
@@ -209,6 +210,8 @@ public:
 
     // shoot - 按照当前角度发射
     void shoot() {
+        if (status == 2)
+            return;
         time_turn = shooter_freq;
         time_prev = 0;
         assert(balls.size() == 0);
@@ -221,6 +224,8 @@ public:
     // 1 - 当前回合已经结束，游戏继续
     // 2 - 游戏结束
     int step(float t) {
+        if (status == 2)
+            return 2;
         time_turn += t;
         testval++;
         if (testval == 591) {
@@ -358,8 +363,10 @@ public:
                     game_over = 2;
             }
 
-            if (game_over == 2)
+            if (game_over == 2) {
+                status = 2;
                 return 2;
+            }
 
             // Create new blocks
             switch (mode) {

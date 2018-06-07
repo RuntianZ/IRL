@@ -15,7 +15,8 @@ class DeepQNetwork:
         replace_target_iter=300,
         memory_size=500,
         batch_size=32,
-        e_greedy_increment=None
+        e_greedy_increment=None,
+        e_greedy_init=0.0,
     ):
         self.n_actions = n_actions
         self.lr = learning_rate
@@ -25,7 +26,7 @@ class DeepQNetwork:
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
-        self.epsilon = 0 if e_greedy_increment is not None else e_greedy
+        self.epsilon = e_greedy_init
 
         # initial some other things
         self.learn_step_counter = 0
@@ -95,8 +96,10 @@ class DeepQNetwork:
             self.memory_index = (self.memory_index + 1) % self.memory_size
 
     def choose_action(self, st):
+        # print(st)
+        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
+        # print(val)
         if np.random.uniform() < self.epsilon:
-            val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
             action = np.argmax(val)
         else:
             action = np.random.randint(0, self.n_actions)
@@ -105,6 +108,7 @@ class DeepQNetwork:
     def greedy(self, st):
         val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
         action = np.argmax(val)
+        print(val)
         return action
 
     def learn(self):

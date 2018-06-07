@@ -22,6 +22,8 @@ lib.shoot.restype = c_int32
 lib.shoot.argtypes = [c_float]
 lib.lock.restype = c_int32
 lib.lock.argtypes = []
+lib.get_state.restype = c_char_p
+lib.get_state.argtypes = []
 
 # Global data
 current_state = ""
@@ -47,6 +49,7 @@ def parse():
     for i in range(4, n - 1, 5):
         new_block = [int(parse_res[i]), int(parse_res[i+1]),
                      float(parse_res[i + 2]), float(parse_res[i + 3]), float(parse_res[i + 4])]
+        # print(new_block[4])
         current_blocks.append(new_block)
         h = int((new_block[3] - 24.0) * 0.076923076923)
         current_max_height = max(h, current_max_height)
@@ -176,16 +179,12 @@ def vector(blocks=None, num_of_balls=0):
             ans[i + 1] = float(block[4])
             ans[i + 2] = intensity(block[1])
             c[h] = c[h] + 3
-
+    # print(ans)
     return ans
 
 
-def _action():
-    lib.display()
-
-
 def display():
-    t = threading.Thread(target=_action)
+    t = threading.Thread(target=lib.display)
     t.start()
     time.sleep(2)
 
@@ -194,3 +193,6 @@ def shoot(angle):
     lib.shoot(angle)
     while lib.lock() == 1:
         time.sleep(1)
+    global current_state
+    current_state = lib.get_state()
+    parse()

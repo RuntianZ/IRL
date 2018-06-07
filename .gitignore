@@ -290,3 +290,4 @@ __pycache__/
 # PyCharm
 .idea
 /test2.txt
+python/model
