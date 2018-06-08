@@ -1,8 +1,29 @@
 import numpy as np
 import tensorflow as tf
+from collections import deque
+import random
+from . import env
 
 np.random.seed(1)
 tf.set_random_seed(1)
+
+
+def weight_variable(shape, name):
+    initial = tf.truncated_normal(shape, stddev=0.01)
+    return tf.Variable(initial, name=name)
+
+
+def bias_variable(shape, name):
+    initial = tf.constant(0.01, shape=shape)
+    return tf.Variable(initial, name=name)
+
+
+def conv2d(x, W, stride):
+    return tf.nn.conv2d(x, W, strides=[1, stride, stride, 1], padding="SAME")
+
+
+def max_pool_2x2(x, name):
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME", name=name)
 
 
 class DeepQNetwork:
@@ -12,42 +33,29 @@ class DeepQNetwork:
         learning_rate=0.9,
         reward_decay=0.9,
         e_greedy=0.9,
-        replace_target_iter=300,
         memory_size=500,
         batch_size=32,
         e_greedy_increment=None,
         e_greedy_init=0.0,
+        output_graph=False,
     ):
         self.n_actions = n_actions
         self.lr = learning_rate
         self.gamma = reward_decay
         self.epsilon_max = e_greedy
-        self.replace_target_iter = replace_target_iter
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
         self.epsilon = e_greedy_init
 
-        # initial some other things
-        self.learn_step_counter = 0
-        self.state_size = 81
-        self.n_units = 512
-        self.memory_counter = 0
-        self.memory_index = 0
-
         # Memory arrangement: (s, s_, r, a)
-        self.memory = np.zeros((self.memory_size, self.state_size * 2 + 2))
+        self.memory = deque()
 
         self._build_net()
 
-        t_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_net')
-
-        e_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='eval_net')
-
-        with tf.variable_scope('soft_replacement'):
-            self.target_replace_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
-
         self.sess = tf.Session()
+        if output_graph:
+            tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
         self.cost_his = []
@@ -55,49 +63,50 @@ class DeepQNetwork:
 
     def _build_net(self):
         # ---------inputs-------------
-        self.s = tf.placeholder(tf.float32, [None, self.state_size], name='s')
-        self.s_ = tf.placeholder(tf.float32, [None, self.state_size], name='s_')
-        self.r = tf.placeholder(tf.float32, [None, ], name='r')
-        self.a = tf.placeholder(tf.int32, [None, ], name='a')
-
-        w_initializer = tf.random_normal_initializer(0.0, 0.5)
-        b_initializer = tf.constant_initializer(0.1)
+        self.s = tf.placeholder(tf.float32, [None, env.max_x, env.max_y, 4], name='s')
+        self.r = tf.placeholder(tf.float32, [None], name='r')
+        self.a = tf.placeholder(tf.float32, [None, self.n_actions], name='a')
 
         # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            e1 = tf.layers.dense(self.s, self.n_units, tf.nn.relu, kernel_initializer=w_initializer,
-                                 bias_initializer=b_initializer, name='e1')
-            self.q_eval = tf.layers.dense(e1, self.n_actions, kernel_initializer=w_initializer,
-                                          bias_initializer=b_initializer, name='q')
+            W_conv1 = weight_variable([5, 5, 4, 32], "W_conv1")
+            b_conv1 = bias_variable([32], "b_conv1")
+            h_conv1 = tf.nn.relu(conv2d(self.s, W_conv1, 2) + b_conv1, name="conv1")
+            h_pool1 = max_pool_2x2(h_conv1, "pool1")
 
-        # ------------------ build target_net ------------------
-        with tf.variable_scope('target_net'):
-            t1 = tf.layers.dense(self.s_, self.n_units, tf.nn.relu, kernel_initializer=w_initializer,
-                                 bias_initializer=b_initializer, name='t1')
-            self.q_next = tf.layers.dense(t1, self.n_actions, kernel_initializer=w_initializer,
-                                          bias_initializer=b_initializer, name='t2')
-        with tf.variable_scope('q_target'):
-            q_target = self.r + self.gamma * tf.reduce_max(self.q_next, axis=1, name='qmax')
-            self.q_target = tf.stop_gradient(q_target)
-        with tf.variable_scope('q_eval'):
-            a_indices = tf.stack([tf.range(tf.shape(self.a)[0], dtype=tf.int32), self.a], axis=1)
-            self.q0 = tf.gather_nd(params=self.q_eval, indices=a_indices)
+            W_conv2 = weight_variable([3, 3, 32, 64], "W_conv2")
+            b_conv2 = bias_variable([64], "b_conv2")
+            h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2, 2) + b_conv2, name="conv2")
+            h_pool2 = max_pool_2x2(h_conv2, "pool2")
+            h_flat3 = tf.reshape(h_pool2, [-1, 2560])
+            #
+            # W_conv3 = weight_variable([3, 3, 64, 64], "W_conv3")
+            # b_conv3 = bias_variable([64], "b_conv3")
+            # h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3, 1) + b_conv3, name="conv3")
+            # h_flat3 = tf.reshape(h_conv3, [-1, 2560])
+
+            W_fc1 = weight_variable([2560, 512], "W_fc1")
+            b_fc1 = bias_variable([512], "b_fc1")
+            h_fc1 = tf.nn.relu(tf.matmul(h_flat3, W_fc1) + b_fc1, name="fc1")
+
+            W_fc2 = weight_variable([512, self.n_actions], "W_fc2")
+            b_fc2 = bias_variable([self.n_actions], "b_fc2")
+            self.q_eval = tf.matmul(h_fc1, W_fc2) + b_fc2
+
         with tf.variable_scope('loss'):
-            self.loss = tf.losses.mean_squared_error(self.q_target, self.q0)
+            self.q0 = tf.reduce_sum(tf.multiply(self.q_eval, self.a), reduction_indices=1)
+            self.loss = tf.losses.mean_squared_error(self.q0, self.r)
         with tf.variable_scope('train'):
             self.train0 = tf.train.AdamOptimizer(self.lr).minimize(self.loss)
 
     def store_transition(self, state, state_, reward, action):
-        if self.memory_counter < self.memory_size:
-            self.memory[self.memory_counter, :] = np.append(state, np.append(state_, np.append(reward, action)))
-            self.memory_counter += 1
-        else:
-            self.memory[self.memory_index, :] = np.append(state, np.append(state_, np.append(reward, action)))
-            self.memory_index = (self.memory_index + 1) % self.memory_size
+        self.memory.append((state, state_, reward, action))
+        if len(self.memory) > self.memory_size:
+            self.memory.popleft()
 
     def choose_action(self, st):
         # print(st)
-        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
+        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, newshape=(1, env.max_x, env.max_y, 4))})
         # print(val)
         if np.random.uniform() < self.epsilon:
             action = np.argmax(val)
@@ -106,42 +115,56 @@ class DeepQNetwork:
         return action
 
     def greedy(self, st):
-        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, (1, self.state_size))})
+        # print(st)
+        val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, newshape=(1, env.max_x, env.max_y, 4))})
         action = np.argmax(val)
         print(val)
         return action
 
     def learn(self):
-        if self.learn_step_counter % self.replace_target_iter == 0:
-            self.sess.run(self.target_replace_op)
-            print('\ntarget_param_replaced\n')
+        # Experience Replay
+        batch_memory = random.sample(self.memory, self.batch_size)
+        batch_s = [d[0] for d in batch_memory]
+        batch_s_ = [d[1] for d in batch_memory]
+        batch_r = [d[2] for d in batch_memory]
+        batch_a = [d[3] for d in batch_memory]
+        batch_target = []
+        batch_action = []
+        s_eval = self.sess.run(self.q_eval,
+                               feed_dict={self.s: batch_s_})
 
-        if self.memory_counter > self.memory_size:
-            ind = np.random.choice(self.memory_size, size=self.batch_size)
-        else:
-            ind = np.random.choice(self.memory_counter, size=self.batch_size)
-
-        # ------------get memory------run loss func-----------
-        batch_memory = self.memory[ind, :]
+        # Compute q-target
+        for i in range(0, len(batch_memory)):
+            batch_target.append(batch_r[i] + self.gamma * np.max(s_eval[i]))
+            a_ = np.zeros(self.n_actions)
+            a_[batch_a[i]] = 1
+            batch_action.append(a_)
 
         _, cost = self.sess.run(
             [self.train0, self.loss],
             feed_dict={
-                self.s: batch_memory[:, 0:self.state_size],
-                self.s_: batch_memory[:, self.state_size:self.state_size*2],
-                self.r: batch_memory[:, self.state_size*2],
-                self.a: batch_memory[:, self.state_size*2+1],
+                self.s: batch_s,
+                self.r: batch_target,
+                self.a: batch_action,
             })
         # ----------------------------------------------------
         self.cost_his.append(cost)
-
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
-        self.learn_step_counter += 1
 
     def save(self, path):
-        save_path = self.saver.save(self.sess, path)
-        print("Model saved in path: %s" % save_path)
+        try:
+            save_path = self.saver.save(self.sess, path)
+            print("Model saved in path: %s" % save_path)
+        except IOError:
+            print("IOError: Model is not saved.")
 
     def load(self, path):
         self.saver.restore(self.sess, path)
         print("Successfully loaded.")
+
+    def plot_cost(self):
+        import matplotlib.pyplot as plt
+        plt.plot(np.arange(len(self.cost_his)), self.cost_his)
+        plt.ylabel('Cost')
+        plt.xlabel('training steps')
+        plt.show()

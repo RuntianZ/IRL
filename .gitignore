@@ -290,4 +290,7 @@ __pycache__/
 # PyCharm
 .idea
 /test2.txt
+
+#Tensorflow
+python/logs
 python/model

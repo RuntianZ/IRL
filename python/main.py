@@ -1,8 +1,6 @@
 from gameboard import env, dqn
-import time
+import numpy as np
 
-RL = dqn.DeepQNetwork(33, learning_rate=0.01, e_greedy=0.9, e_greedy_init=0.0,
-                      replace_target_iter=100, memory_size=2000, e_greedy_increment=0.00005)
 model_path = './model/model.ckpt'
 action_list = [
     -80.0, -75.0, -70.0, -65.0, -60.0, -55.0, -50.0, -45.0, -40.0, -35.0,
@@ -15,14 +13,15 @@ action_list = [
 def train():
     total_steps = 0
     min_steps = 100
-    num_episodes = 20000
+    num_episodes = 100
     save_freq = 1000
 
     for i_episode in range(num_episodes):
         env.start_game()
         old_score = env.current_score
         old_height = env.current_max_height
-        state = env.vector()
+        img = env.image()
+        state = np.stack((img, img, img, img), axis=2)
         ep_r = 0
         while env.current_status == 1:
             action = RL.choose_action(state)
@@ -30,11 +29,12 @@ def train():
 
             # Computing reward
             r1 = (env.current_score - old_score) / env.current_num_of_balls   # delta_score
-            r2 = 0.0 if env.current_max_height <= old_height else -5.0        # height reward
-            r3 = -10.0 if env.current_status == 2 else 0.0                     # death penalty
+            r2 = 0.0 if env.current_max_height <= old_height else -3.0        # height penalty
+            r3 = -8.0 if env.current_status == 2 else 0.0                     # death penalty
             reward = r1 + r2 + r3
 
-            new_state = env.vector()
+            new_img = env.image()
+            new_state = np.stack((new_img, new_img, new_img, new_img), axis=2)
             old_score = env.current_score
             old_height = env.current_max_height
             RL.store_transition(state, new_state, reward, action)
@@ -63,6 +63,6 @@ def play():
 
 
 if __name__ == '__main__':
-    env.start_game()
+    RL = dqn.DeepQNetwork(33, learning_rate=1e-6, e_greedy=0.99, e_greedy_init=0.0,
+                          memory_size=20000, e_greedy_increment=1e-4, output_graph=True)
     train()
-

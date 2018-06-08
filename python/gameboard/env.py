@@ -72,8 +72,8 @@ def move(angle):
     parse()
 
 
-max_x = 90
-max_y = 160
+max_x = 80
+max_y = 128
 radius = 6
 atan_value = [[-45.0, -50.19442890773481, -56.309932474020215, -63.43494882292201, 
                -71.56505117707799, -80.53767779197439, 90.0, 80.53767779197439, 71.56505117707799, 
@@ -139,6 +139,8 @@ def image(blocks=None, num_of_balls=0):
             for dy in range(-radius, radius + 1):
                 x = int(cx + dx)
                 y = int(cy + dy)
+                if x < 5 or x >= 85 or y < 16 or y >= 144:
+                    continue
                 a = atan_value[dx + radius][dy + radius]
                 if block[0] == 0:
                     a = a - ca
@@ -160,7 +162,7 @@ def image(blocks=None, num_of_balls=0):
                     maxd = 4.0
                 d = math.sqrt(dx * dx + dy * dy)
                 if d <= maxd:
-                    img[x, y] = math.ceil(intensity(cl))
+                    img[x-5, y-16] = math.ceil(intensity(cl))
     return img
 
 
