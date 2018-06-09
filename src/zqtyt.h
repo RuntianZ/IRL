@@ -382,7 +382,7 @@ public:
                 r = float(rand()) / float(RAND_MAX);
                 int num_of_babies = int(r * 3) + 1;
                 r = float(rand()) / float(RAND_MAX);
-                int sum_of_babies = int((r * 4 + 3.5) * num_of_balls);
+                int sum_of_babies = int((r * 2 + 2.5) * num_of_balls);
                 float rd[6], rrd[6];
                 r = 0;
                 for (int i = 0; i <= num_of_babies; i++) {

@@ -2,6 +2,7 @@ from gameboard import env, dqn
 import numpy as np
 
 model_path = './model/model.ckpt'
+model_path2 = './model2/model.ckpt'
 action_list = [
     -80.0, -75.0, -70.0, -65.0, -60.0, -55.0, -50.0, -45.0, -40.0, -35.0,
     -30.0, -25.0, -20.0, -15.0, -10.0,  -5.0,   0.0,   5.0,  10.0,  15.0,
@@ -13,7 +14,7 @@ action_list = [
 def train():
     total_steps = 0
     min_steps = 100
-    num_episodes = 100
+    num_episodes = 10000
     save_freq = 1000
 
     for i_episode in range(num_episodes):
@@ -57,12 +58,15 @@ def train():
 def play():
     env.display()
     while env.current_status == 1:
-        s = env.vector()
+        img = env.image()
+        s = np.stack((img, img, img, img), axis=2)
         a = RL.greedy(s)
         env.shoot(action_list[a])
 
 
 if __name__ == '__main__':
-    RL = dqn.DeepQNetwork(33, learning_rate=1e-6, e_greedy=0.99, e_greedy_init=0.0,
-                          memory_size=20000, e_greedy_increment=1e-4, output_graph=True)
-    train()
+    RL = dqn.DeepQNetwork(33, learning_rate=1e-6, e_greedy=0.99, e_greedy_init=0.5,
+                          memory_size=20000, e_greedy_increment=1e-5, output_graph=True)
+    RL.load(model_path)
+    env.start_game()
+    play()

@@ -118,7 +118,7 @@ class DeepQNetwork:
         # print(st)
         val = self.sess.run(self.q_eval, feed_dict={self.s: np.reshape(st, newshape=(1, env.max_x, env.max_y, 4))})
         action = np.argmax(val)
-        print(val)
+        # print(val)
         return action
 
     def learn(self):
