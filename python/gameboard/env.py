@@ -123,7 +123,7 @@ def intensity(x):
     return y
 
 
-def image(blocks=None, num_of_balls=0):
+def image(blocks=None, num_of_balls=0, scale=1.0):
     img = np.zeros([max_x, max_y], np.int32)
     global current_blocks, current_num_of_balls, tmp_blocks, tmp_num_of_balls
     tmp_blocks = blocks or current_blocks
@@ -161,6 +161,7 @@ def image(blocks=None, num_of_balls=0):
                 else:
                     maxd = 4.0
                 d = math.sqrt(dx * dx + dy * dy)
+                maxd *= scale
                 if d <= maxd:
                     img[x-5, y-16] = math.ceil(intensity(cl))
     return img

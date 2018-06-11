@@ -293,3 +293,4 @@ __pycache__/
 
 #Tensorflow
 python/logs
+/python/myplot.png
