@@ -1,7 +1,7 @@
 from gameboard import env, dqn
 import numpy as np
 
-model_path = './model81/model.ckpt'
+model_path = './model512/model.ckpt'
 model_path2 = './model2/model.ckpt'
 action_list = []
 for i in range(-80, 81, 2):
@@ -10,9 +10,9 @@ for i in range(-80, 81, 2):
 
 def train():
     total_steps = 0
-    min_steps = 1000
+    min_steps = 100
     num_episodes = 20000
-    save_freq = 300
+    save_freq = 200
 
     for i_episode in range(num_episodes):
         env.start_game()
@@ -77,8 +77,8 @@ def trial(scale, n_trials=100):
 
 
 if __name__ == '__main__':
-    RL = dqn.DeepQNetwork(81, learning_rate=1e-6, e_greedy=0.99, e_greedy_init=0.5,
-                          memory_size=20000, e_greedy_increment=3e-6, output_graph=True)
+    env.set_zoom(4)
+    RL = dqn.DeepQNetwork(81, learning_rate=1e-6, e_greedy=0.99, e_greedy_init=0.78,
+                          memory_size=20000, e_greedy_increment=1e-5, output_graph=True)
     RL.load(model_path)
     play()
-

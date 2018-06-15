@@ -69,23 +69,23 @@ class DeepQNetwork:
 
         # ------------------ build evaluate_net ------------------
         with tf.variable_scope('eval_net'):
-            W_conv1 = weight_variable([5, 5, 4, 32], "W_conv1")
+            W_conv1 = weight_variable([7, 7, 4, 32], "W_conv1")
             b_conv1 = bias_variable([32], "b_conv1")
-            h_conv1 = tf.nn.relu(conv2d(self.s, W_conv1, 2) + b_conv1, name="conv1")
+            h_conv1 = tf.nn.relu(conv2d(self.s, W_conv1, 4) + b_conv1, name="conv1")
             h_pool1 = max_pool_2x2(h_conv1, "pool1")
 
-            W_conv2 = weight_variable([3, 3, 32, 64], "W_conv2")
+            W_conv2 = weight_variable([5, 5, 32, 64], "W_conv2")
             b_conv2 = bias_variable([64], "b_conv2")
             h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2, 2) + b_conv2, name="conv2")
             h_pool2 = max_pool_2x2(h_conv2, "pool2")
-            h_flat3 = tf.reshape(h_pool2, [-1, 2560])
-            #
-            # W_conv3 = weight_variable([3, 3, 64, 64], "W_conv3")
-            # b_conv3 = bias_variable([64], "b_conv3")
-            # h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3, 1) + b_conv3, name="conv3")
-            # h_flat3 = tf.reshape(h_conv3, [-1, 2560])
 
-            W_fc1 = weight_variable([2560, 512], "W_fc1")
+            W_conv3 = weight_variable([3, 3, 64, 128], "W_conv3")
+            b_conv3 = bias_variable([128], "b_conv3")
+            h_conv3 = tf.nn.relu(conv2d(h_pool2, W_conv3, 2) + b_conv3, name="conv3")
+            # h_pool3 = max_pool_2x2(h_conv3, "pool3")
+            h_flat3 = tf.reshape(h_conv3, [-1, 5120])
+
+            W_fc1 = weight_variable([5120, 512], "W_fc1")
             b_fc1 = bias_variable([512], "b_fc1")
             h_fc1 = tf.nn.relu(tf.matmul(h_flat3, W_fc1) + b_fc1, name="fc1")
 
